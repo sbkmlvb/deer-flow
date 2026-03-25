@@ -11,6 +11,13 @@ export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/v24.12.0/bin:$PATH"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# ── Load environment variables from .env ──────────────────────────────────────
+if [ -f "$REPO_ROOT/.env" ]; then
+    set -a
+    source "$REPO_ROOT/.env"
+    set +a
+fi
+
 # ── Argument parsing ─────────────────────────────────────────────────────────
 
 DEV_MODE=true
