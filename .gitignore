@@ -30,6 +30,8 @@ frontend/next-env.d.ts
 frontend/next.config.js
 frontend/next.config.ts
 
+# oh-my-claudecode state
+.omc/
 # OS generated files
 .DS_Store
 *.local
