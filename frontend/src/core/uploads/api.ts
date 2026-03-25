@@ -64,7 +64,11 @@ export async function uploadFiles(
     throw new Error(await readErrorDetail(response, "Upload failed"));
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    return { success: true, files: [], message: "Upload successful" };
+  }
 }
 
 /**
@@ -83,7 +87,11 @@ export async function listUploadedFiles(
     );
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    return { files: [], count: 0 };
+  }
 }
 
 /**
@@ -104,5 +112,9 @@ export async function deleteUploadedFile(
     throw new Error(await readErrorDetail(response, "Failed to delete file"));
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    return { success: true, message: "File deleted" };
+  }
 }

@@ -1,5 +1,35 @@
 # DeerFlow docker image cache
 docker/.cache/
+
+# Node.js binary dependencies (node_bin is for standalone node, not needed in repo)
+backend/node_bin/
+
+# Build outputs
+dist/
+build/
+*.spec
+
+# MCP proxies (local development)
+mcp_proxies/
+
+# Frontend lock files (use pnpm-lock.yaml instead)
+frontend/package-lock.json
+frontend/yarn.lock
+frontend/package.json
+
+# Frontend build outputs
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Frontend typescript
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Frontend config overrides
+frontend/next.config.js
+frontend/next.config.ts
+
 # OS generated files
 .DS_Store
 *.local
@@ -44,6 +74,7 @@ log/
 
 # pnpm
 .pnpm-store
+pnpm-lock.yaml
 sandbox_image_cache.tar
 
 # ignore the legacy `web` folder
@@ -52,3 +83,8 @@ web/
 # Deployment artifacts
 backend/Dockerfile.langgraph
 config.yaml.bak
+test_zhipu_api.py
+test_zhipu_models.py
+
+# PyInstaller
+*.egg-info/

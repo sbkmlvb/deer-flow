@@ -30,6 +30,7 @@ export interface Translations {
     preview: string;
     cancel: string;
     save: string;
+    saving: string;
     install: string;
     create: string;
     export: string;
@@ -228,11 +229,32 @@ export interface Translations {
     description: string;
     sections: {
       appearance: string;
+      models: string;
       memory: string;
       tools: string;
       skills: string;
       notification: string;
       about: string;
+    };
+    models: {
+      title: string;
+      description: string;
+      defaultModel: string;
+      selectDefault: string;
+      models: string;
+      addModel: string;
+      editModel: string;
+      name: string;
+      displayName: string;
+      provider: string;
+      model: string;
+      baseUrl: string;
+      apiKey: string;
+      thinking: string;
+      vision: string;
+      default: string;
+      addDescription: string;
+      editDescription: string;
     };
     memory: {
       title: string;

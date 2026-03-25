@@ -6,6 +6,8 @@
 
 set -e
 
+export PATH="$HOME/.local/bin:$HOME/.nvm/versions/node/v24.12.0/bin:$PATH"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 

@@ -39,16 +39,20 @@ function getStreamErrorMessage(error: unknown): string {
     return error.message;
   }
   if (typeof error === "object" && error !== null) {
-    const message = Reflect.get(error, "message");
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-    const nestedError = Reflect.get(error, "error");
-    if (nestedError instanceof Error && nestedError.message.trim()) {
-      return nestedError.message;
-    }
-    if (typeof nestedError === "string" && nestedError.trim()) {
-      return nestedError;
+    try {
+      const message = Reflect.get(error, "message");
+      if (typeof message === "string" && message.trim()) {
+        return message;
+      }
+      const nestedError = Reflect.get(error, "error");
+      if (nestedError instanceof Error && nestedError.message.trim()) {
+        return nestedError.message;
+      }
+      if (typeof nestedError === "string" && nestedError.trim()) {
+        return nestedError;
+      }
+    } catch {
+      return "Request failed.";
     }
   }
   return "Request failed.";
@@ -186,17 +190,22 @@ export function useThreadStream({
   const [isUploading, setIsUploading] = useState(false);
   const sendInFlightRef = useRef(false);
   // Track message count before sending so we know when server has responded
-  const prevMsgCountRef = useRef(thread.messages.length);
+  const prevMsgCountRef = useRef(
+    Array.isArray(thread.messages) ? thread.messages.length : 0,
+  );
 
   // Clear optimistic when server messages arrive (count increases)
   useEffect(() => {
+    const currentMessages = Array.isArray(thread.messages)
+      ? thread.messages
+      : [];
     if (
       optimisticMessages.length > 0 &&
-      thread.messages.length > prevMsgCountRef.current
+      currentMessages.length > prevMsgCountRef.current
     ) {
       setOptimisticMessages([]);
     }
-  }, [thread.messages.length, optimisticMessages.length]);
+  }, [thread.messages, optimisticMessages.length]);
 
   const sendMessage = useCallback(
     async (
@@ -212,7 +221,9 @@ export function useThreadStream({
       const text = message.text.trim();
 
       // Capture current count before showing optimistic messages
-      prevMsgCountRef.current = thread.messages.length;
+      prevMsgCountRef.current = Array.isArray(thread.messages)
+        ? thread.messages.length
+        : 0;
 
       // Build optimistic files list with uploading status
       const optimisticFiles: FileInMessage[] = (message.files ?? []).map(
@@ -398,11 +409,12 @@ export function useThreadStream({
   );
 
   // Merge thread with optimistic messages for display
+  const threadMessages = Array.isArray(thread.messages) ? thread.messages : [];
   const mergedThread =
     optimisticMessages.length > 0
       ? ({
           ...thread,
-          messages: [...thread.messages, ...optimisticMessages],
+          messages: [...threadMessages, ...optimisticMessages],
         } as typeof thread)
       : thread;
 

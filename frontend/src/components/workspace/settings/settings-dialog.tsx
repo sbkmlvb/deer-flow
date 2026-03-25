@@ -2,6 +2,7 @@
 
 import {
   BellIcon,
+  BotIcon,
   InfoIcon,
   BrainIcon,
   PaletteIcon,
@@ -23,6 +24,7 @@ import { MemorySettingsPage } from "@/components/workspace/settings/memory-setti
 import { NotificationSettingsPage } from "@/components/workspace/settings/notification-settings-page";
 import { SkillSettingsPage } from "@/components/workspace/settings/skill-settings-page";
 import { ToolSettingsPage } from "@/components/workspace/settings/tool-settings-page";
+import { ModelSettingsPage } from "@/components/workspace/settings/model-settings-page";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +34,8 @@ type SettingsSection =
   | "tools"
   | "skills"
   | "notification"
-  | "about";
+  | "about"
+  | "models";
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
   defaultSection?: SettingsSection;
@@ -60,6 +63,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
         icon: PaletteIcon,
       },
       {
+        id: "models",
+        label: t.settings.sections.models || "模型设置",
+        icon: BotIcon,
+      },
+      {
         id: "notification",
         label: t.settings.sections.notification,
         icon: BellIcon,
@@ -75,6 +83,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
     ],
     [
       t.settings.sections.appearance,
+      t.settings.sections.models,
       t.settings.sections.memory,
       t.settings.sections.tools,
       t.settings.sections.skills,
@@ -125,6 +134,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <ScrollArea className="h-full min-h-0 rounded-lg border">
             <div className="space-y-8 p-6">
               {activeSection === "appearance" && <AppearanceSettingsPage />}
+              {activeSection === "models" && <ModelSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}
               {activeSection === "tools" && <ToolSettingsPage />}
               {activeSection === "skills" && (
