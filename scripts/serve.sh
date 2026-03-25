@@ -35,17 +35,31 @@ else
     FRONTEND_CMD="env BETTER_AUTH_SECRET=$(python3 -c 'import secrets; print(secrets.token_hex(16))') pnpm run preview"
 fi
 
-# ── Stop existing services ────────────────────────────────────────────────────
+# ── Check if nginx is already running ─────────────────────────────────────────
+
+NGINX_ALREADY_RUNNING=false
+if lsof -i :2026 >/dev/null 2>&1; then
+    if pgrep -f "nginx.*2026" >/dev/null 2>&1 || pgrep -f "nginx.*local.conf" >/dev/null 2>&1; then
+        NGINX_ALREADY_RUNNING=true
+        echo "检测到 nginx 已在 2026 端口运行，将复用现有服务"
+    fi
+fi
+
+# ── Stop existing services (except nginx if already running) ──────────────────
 
 echo "Stopping existing services if any..."
 pkill -f "langgraph dev" 2>/dev/null || true
 pkill -f "uvicorn app.gateway.app:app" 2>/dev/null || true
 pkill -f "next dev" 2>/dev/null || true
 pkill -f "next-server" 2>/dev/null || true
-nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
-sleep 1
-pkill -9 nginx 2>/dev/null || true
-killall -9 nginx 2>/dev/null || true
+
+if [ "$NGINX_ALREADY_RUNNING" = false ]; then
+    nginx -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" -s quit 2>/dev/null || true
+    sleep 1
+    pkill -9 nginx 2>/dev/null || true
+    killall -9 nginx 2>/dev/null || true
+fi
+
 ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
 sleep 1
 
@@ -102,15 +116,22 @@ cleanup() {
     pkill -f "next dev" 2>/dev/null || true
     pkill -f "next start" 2>/dev/null || true
     pkill -f "next-server" 2>/dev/null || true
-    # Kill nginx using the captured PID first (most reliable),
-    # then fall back to pkill/killall for any stray nginx workers.
-    if [ -n "${NGINX_PID:-}" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
-        kill -TERM "$NGINX_PID" 2>/dev/null || true
-        sleep 1
-        kill -9 "$NGINX_PID" 2>/dev/null || true
+
+    # 只有当我们自己启动了 nginx 时才停止它
+    if [ "$NGINX_ALREADY_RUNNING" = false ]; then
+        # Kill nginx using the captured PID first (most reliable),
+        # then fall back to pkill/killall for any stray nginx workers.
+        if [ -n "${NGINX_PID:-}" ] && kill -0 "$NGINX_PID" 2>/dev/null; then
+            kill -TERM "$NGINX_PID" 2>/dev/null || true
+            sleep 1
+            kill -9 "$NGINX_PID" 2>/dev/null || true
+        fi
+        pkill -9 nginx 2>/dev/null || true
+        killall -9 nginx 2>/dev/null || true
+    else
+        echo "保留已运行的 nginx 服务..."
     fi
-    pkill -9 nginx 2>/dev/null || true
-    killall -9 nginx 2>/dev/null || true
+
     echo "Cleaning up sandbox containers..."
     ./scripts/cleanup-containers.sh deer-flow-sandbox 2>/dev/null || true
     echo "✓ All services stopped"
@@ -169,15 +190,20 @@ echo "Starting Frontend..."
 }
 echo "✓ Frontend started on localhost:3000"
 
-echo "Starting Nginx reverse proxy..."
-nginx -g 'daemon off;' -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" > logs/nginx.log 2>&1 &
-NGINX_PID=$!
-./scripts/wait-for-port.sh 2026 10 "Nginx" || {
-    echo "  See logs/nginx.log for details"
-    tail -10 logs/nginx.log
-    cleanup
-}
-echo "✓ Nginx started on localhost:2026"
+if [ "$NGINX_ALREADY_RUNNING" = true ]; then
+    echo "Nginx 已在运行，跳过启动..."
+    echo "✓ 复用现有 Nginx (localhost:2026)"
+else
+    echo "Starting Nginx reverse proxy..."
+    nginx -g 'daemon off;' -c "$REPO_ROOT/docker/nginx/nginx.local.conf" -p "$REPO_ROOT" > logs/nginx.log 2>&1 &
+    NGINX_PID=$!
+    ./scripts/wait-for-port.sh 2026 10 "Nginx" || {
+        echo "  See logs/nginx.log for details"
+        tail -10 logs/nginx.log
+        cleanup
+    }
+    echo "✓ Nginx started on localhost:2026"
+fi
 
 # ── Ready ─────────────────────────────────────────────────────────────────────
 

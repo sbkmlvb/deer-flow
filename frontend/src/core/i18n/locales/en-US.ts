@@ -1,23 +1,21 @@
 import {
-  CompassIcon,
   GraduationCapIcon,
   ImageIcon,
+  LightbulbIcon,
   MicroscopeIcon,
   PenLineIcon,
   ShapesIcon,
-  SparklesIcon,
   VideoIcon,
+  WandIcon,
 } from "lucide-react";
 
 import type { Translations } from "./types";
 
 export const enUS: Translations = {
-  // Locale meta
   locale: {
     localName: "English",
   },
 
-  // Common
   common: {
     home: "Home",
     settings: "Settings",
@@ -50,18 +48,16 @@ export const enUS: Translations = {
     exportSuccess: "Conversation exported",
   },
 
-  // Welcome
   welcome: {
     greeting: "Hello, again!",
     description:
-      "Welcome to 🦌 DeerFlow, an open source super agent. With built-in and custom skills, DeerFlow helps you search on the web, analyze data, and generate artifacts like slides, web pages and do almost anything.",
+      "Welcome to JRAiController, your professional stage lighting control assistant. I can help you manage lighting programs, edit sequences, configure DMX devices, and coordinate stage effects.",
 
     createYourOwnSkill: "Create Your Own Skill",
     createYourOwnSkillDescription:
-      "Create your own skill to release the power of DeerFlow. With customized skills,\nDeerFlow can help you search on the web, analyze data, and generate\n artifacts like slides, web pages and do almost anything.",
+      "Create your own skill to extend JRAiController's capabilities. With customized skills,\nyou can implement advanced features like automated lighting control and sequence generation.",
   },
 
-  // Clipboard
   clipboard: {
     copyToClipboard: "Copy to clipboard",
     copiedToClipboard: "Copied to clipboard",
@@ -69,7 +65,6 @@ export const enUS: Translations = {
     linkCopied: "Link copied to clipboard",
   },
 
-  // Input Box
   inputBox: {
     placeholder: "How can I assist you today?",
     createSkillPrompt:
@@ -109,41 +104,40 @@ export const enUS: Translations = {
     followupConfirmReplace: "Replace & send",
     suggestions: [
       {
-        suggestion: "Write",
-        prompt: "Write a blog post about the latest trends on [topic]",
-        icon: PenLineIcon,
+        suggestion: "Lighting Program",
+        prompt: "Help me create a lighting program about [topic]",
+        icon: LightbulbIcon,
       },
       {
-        suggestion: "Research",
-        prompt:
-          "Conduct a deep dive research on [topic], and summarize the findings.",
-        icon: MicroscopeIcon,
+        suggestion: "Sequence Edit",
+        prompt: "Create a sequence with [steps] lighting changes",
+        icon: VideoIcon,
       },
       {
-        suggestion: "Collect",
-        prompt: "Collect data from [source] and create a report.",
+        suggestion: "Asset Management",
+        prompt: "Organize my [type] assets",
         icon: ShapesIcon,
       },
       {
         suggestion: "Learn",
-        prompt: "Learn about [topic] and create a tutorial.",
+        prompt: "Teach me how to use [feature], create a tutorial",
         icon: GraduationCapIcon,
       },
     ],
     suggestionsCreate: [
       {
-        suggestion: "Webpage",
-        prompt: "Create a webpage about [topic]",
-        icon: CompassIcon,
+        suggestion: "Lighting Program",
+        prompt: "Generate a lighting program about [topic]",
+        icon: WandIcon,
       },
       {
-        suggestion: "Image",
-        prompt: "Create an image about [topic]",
+        suggestion: "Edit Image",
+        prompt: "Process a [type] stage background image",
         icon: ImageIcon,
       },
       {
         suggestion: "Video",
-        prompt: "Create a video about [topic]",
+        prompt: "Generate a video about [topic]",
         icon: VideoIcon,
       },
       {
@@ -153,12 +147,11 @@ export const enUS: Translations = {
         suggestion: "Skill",
         prompt:
           "We're going to build a new skill step by step with `skill-creator`. To start, what do you want this skill to do?",
-        icon: SparklesIcon,
+        icon: PenLineIcon,
       },
     ],
   },
 
-  // Sidebar
   sidebar: {
     newChat: "New chat",
     chats: "Chats",
@@ -167,7 +160,6 @@ export const enUS: Translations = {
     agents: "Agents",
   },
 
-  // Agents
   agents: {
     title: "Agents",
     description:
@@ -201,43 +193,37 @@ export const enUS: Translations = {
     backToGallery: "Back to Gallery",
   },
 
-  // Breadcrumb
   breadcrumb: {
     workspace: "Workspace",
     chats: "Chats",
   },
 
-  // Workspace
   workspace: {
-    officialWebsite: "DeerFlow's official website",
-    githubTooltip: "DeerFlow on Github",
+    officialWebsite: "Official Website",
+    githubTooltip: "View on GitHub",
     settingsAndMore: "Settings and more",
-    visitGithub: "DeerFlow on GitHub",
-    reportIssue: "Report a issue",
-    contactUs: "Contact us",
-    about: "About DeerFlow",
+    visitGithub: "Visit GitHub",
+    reportIssue: "Report Issue",
+    contactUs: "Contact Us",
+    about: "About",
   },
 
-  // Conversation
   conversation: {
     noMessages: "No messages yet",
     startConversation: "Start a conversation to see messages here",
   },
 
-  // Chats
   chats: {
     searchChats: "Search chats",
   },
 
-  // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "JRAiController",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",
   },
 
-  // Tool calls
   toolCalls: {
     moreSteps: (count: number) => `${count} more step${count === 1 ? "" : "s"}`,
     lessSteps: "Less steps",
@@ -257,10 +243,9 @@ export const enUS: Translations = {
     writeFile: "Write file",
     clickToViewContent: "Click to view file content",
     writeTodos: "Update to-do list",
-    skillInstallTooltip: "Install skill and make it available to DeerFlow",
+    skillInstallTooltip: "Install skill and make it available to JRAiController",
   },
 
-  // Subtasks
   uploads: {
     uploading: "Uploading...",
     uploadingFiles: "Uploading files, please wait...",
@@ -275,29 +260,26 @@ export const enUS: Translations = {
     failed: "Subtask failed",
   },
 
-  // Token Usage
   tokenUsage: {
     title: "Token Usage",
     input: "Input",
     output: "Output",
     total: "Total",
   },
-  
-  // Shortcuts
+
   shortcuts: {
     searchActions: "Search actions...",
     noResults: "No results found.",
     actions: "Actions",
     keyboardShortcuts: "Keyboard Shortcuts",
-    keyboardShortcutsDescription: "Navigate DeerFlow faster with keyboard shortcuts.",
+    keyboardShortcutsDescription: "Navigate JRAiController faster with keyboard shortcuts.",
     openCommandPalette: "Open Command Palette",
     toggleSidebar: "Toggle Sidebar",
   },
 
-  // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how DeerFlow looks and behaves for you.",
+    description: "Adjust how JRAiController looks and behaves for you.",
     sections: {
       appearance: "Appearance",
       models: "Models",
@@ -326,11 +308,18 @@ export const enUS: Translations = {
       default: "Default",
       addDescription: "Add a new AI model configuration",
       editDescription: "Modify model configuration",
+      loadError: "Failed to load models",
+      saveError: "Failed to save configuration",
+      deleteError: "Failed to delete model",
+      addError: "Failed to add model",
+      updateError: "Failed to update model",
+      nameRequired: "Name and model are required",
+      nameExists: "Model name already exists",
     },
     memory: {
       title: "Memory",
       description:
-        "DeerFlow automatically learns from your conversations in the background. These memories help DeerFlow understand you better and deliver a more personalized experience.",
+        "JRAiController automatically learns from your conversations in the background. These memories help JRAiController understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       markdown: {
@@ -386,18 +375,18 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of JRAiController.",
       emptyButton: "Create Your First Skill",
     },
     notification: {
       title: "Notification",
       description:
-        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "JRAiController only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "DeerFlow",
+      testTitle: "JRAiController",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",

@@ -94,9 +94,14 @@ class SkillResponse(BaseModel):
 
     name: str = Field(..., description="Name of the skill")
     description: str = Field(..., description="Description of what the skill does")
+    summary: str = Field(default="", description="Short summary (JRAiController format)")
     license: str | None = Field(None, description="License information")
-    category: str = Field(..., description="Category of the skill (public or custom)")
+    category: str = Field(..., description="Category of the skill (public, custom, lighting, stage, etc.)")
     enabled: bool = Field(default=True, description="Whether this skill is enabled")
+    source: str = Field(default="deer-flow", description="Source system (deer-flow or jraicontroller)")
+    mcp_tools: list[str] = Field(default_factory=list, description="Associated MCP tools")
+    icon: str = Field(default="", description="Skill icon")
+    tags: list[str] = Field(default_factory=list, description="Skill tags")
 
 
 class SkillsListResponse(BaseModel):
@@ -143,10 +148,15 @@ def _skill_to_response(skill: Skill) -> SkillResponse:
     """Convert a Skill object to a SkillResponse."""
     return SkillResponse(
         name=skill.name,
-        description=skill.description,
+        description=skill.get_display_description(),
+        summary=skill.summary,
         license=skill.license,
         category=skill.category,
         enabled=skill.enabled,
+        source=skill.source,
+        mcp_tools=skill.mcp_tools,
+        icon=skill.icon,
+        tags=skill.tags,
     )
 
 

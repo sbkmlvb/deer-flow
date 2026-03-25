@@ -13,24 +13,43 @@ DeerFlow Frontend is a Next.js 16 web interface for an AI agent system. It commu
 | Command | Purpose |
 |---------|---------|
 | `pnpm dev` | Dev server with Turbopack (http://localhost:3000) |
-| `pnpm build` | Production build |
+| `pnpm build` | Production build (standalone 模式) |
 | `pnpm check` | Lint + type check (run before committing) |
 | `pnpm lint` | ESLint only |
 | `pnpm lint:fix` | ESLint with auto-fix |
 | `pnpm typecheck` | TypeScript type check (`tsc --noEmit`) |
-| `pnpm start` | Start production server |
+| `pnpm start` | Start production server (需要 `node server.js`) |
 
 No test framework is configured.
 
 ## Architecture
 
+### 开发模式架构
 ```
-Frontend (Next.js) ──▶ LangGraph SDK ──▶ LangGraph Backend (lead_agent)
-                                              ├── Sub-Agents
-                                              └── Tools & Skills
+Frontend (Next.js dev server, port 3000)
+    │
+    ├── /api/langgraph/* ──▶ Nginx (2026) ──▶ LangGraph Server (2024)
+    │                                            └── Lead Agent + Sub-Agents
+    │
+    └── /api/* (其他) ─────▶ Nginx (2026) ──▶ Gateway API (8001)
+                                                 └── Models, MCP, Skills, Memory...
 ```
 
-The frontend is a stateful chat application. Users create **threads** (conversations), send messages, and receive streamed AI responses. The backend orchestrates agents that can produce **artifacts** (files/code) and **todos**.
+### 打包模式架构
+```
+Frontend (Next.js standalone, port 3000)
+    │
+    ├── /api/langgraph/* ──▶ Gateway API (8001)
+    │                            └── 嵌入式 LangGraph 运行时 (DeerFlowClient)
+    │                                 └── Lead Agent + Sub-Agents (进程内)
+    │
+    └── /api/* (其他) ─────▶ Gateway API (8001)
+                                 └── Models, MCP, Skills, Memory...
+```
+
+**关键差异**:
+- 开发模式：需要独立的 LangGraph Server (port 2024)
+- 打包模式：Gateway 内置嵌入式 Agent 运行时，无需独立 LangGraph Server
 
 ### Source Layout (`src/`)
 
@@ -80,10 +99,48 @@ The frontend is a stateful chat application. Users create **threads** (conversat
 
 ## Environment
 
+### 开发模式
 Backend API URLs are optional; an nginx proxy is used by default:
 ```
 NEXT_PUBLIC_BACKEND_BASE_URL=http://localhost:8001
 NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:2024
 ```
 
+### 打包模式
+前端连接到 Gateway (8001)，Gateway 内置 LangGraph 兼容 API：
+```
+NEXT_PUBLIC_BACKEND_BASE_URL=http://localhost:8001
+NEXT_PUBLIC_LANGGRAPH_BASE_URL=http://localhost:8001/api/langgraph
+```
+
+或者前端直接使用相对路径（推荐）：
+```
+# 默认配置，通过 Nginx 或 Gateway 代理
+NEXT_PUBLIC_BACKEND_BASE_URL=
+NEXT_PUBLIC_LANGGRAPH_BASE_URL=/api/langgraph
+```
+
 Requires Node.js 22+ and pnpm 10.26.2+.
+
+## 打包说明
+
+### 构建配置 (`next.config.ts`)
+```typescript
+const nextConfig: NextConfig = {
+  output: "standalone",  // 独立部署模式
+  images: { unoptimized: true },
+};
+```
+
+### 打包输出
+构建后生成 `.next/standalone/` 目录，包含：
+- `server.js` - 入口文件
+- `.next/static/` - 静态资源（需手动复制）
+- `node_modules/` - 最小依赖
+- `public/` - 公共资源（需手动复制）
+
+### 运行打包版本
+```bash
+cd .next/standalone
+PORT=3000 node server.js
+```

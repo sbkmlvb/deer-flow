@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PlusIcon, TrashIcon, PencilIcon } from "lucide-react";
+import { getBackendBaseURL } from "@/core/config";
 
 interface ModelConfig {
   name: string;
@@ -69,14 +70,16 @@ export function ModelSettingsPage() {
   const fetchModels = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/models/config");
+      const response = await fetch(`${getBackendBaseURL()}/api/models/config`);
       if (response.ok) {
         const data: ModelsResponse = await response.json();
         setModels(data.models || []);
         setDefaultModel(data.default_model || "gpt-4");
+      } else {
+        setError(t.settings.models?.loadError || "加载模型失败");
       }
     } catch (err) {
-      setError("Failed to load models");
+      setError(t.settings.models?.loadError || "加载模型失败");
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +92,7 @@ export function ModelSettingsPage() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const response = await fetch("/api/models/config", {
+      const response = await fetch(`${getBackendBaseURL()}/api/models/config`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ models, default_model: defaultModel }),
@@ -99,7 +102,7 @@ export function ModelSettingsPage() {
       }
       await fetchModels();
     } catch (err) {
-      setError("Failed to save configuration");
+      setError(t.settings.models?.saveError || "保存配置失败");
     } finally {
       setIsSaving(false);
     }
@@ -107,25 +110,32 @@ export function ModelSettingsPage() {
 
   const handleDeleteModel = async (name: string) => {
     try {
-      const response = await fetch(`/api/models/${name}`, {
+      const response = await fetch(`${getBackendBaseURL()}/api/models/${name}`, {
         method: "DELETE",
       });
       if (response.ok) {
         setModels(models.filter((m) => m.name !== name));
+      } else {
+        setError(t.settings.models?.deleteError || "删除模型失败");
       }
     } catch (err) {
-      setError("Failed to delete model");
+      setError(t.settings.models?.deleteError || "删除模型失败");
     }
   };
 
   const handleAddModel = async () => {
     if (!newModel.name || !newModel.model) {
-      setError("Name and model are required");
+      setError(t.settings.models?.nameRequired || "名称和模型为必填项");
+      return;
+    }
+
+    if (models.some((m) => m.name === newModel.name)) {
+      setError(t.settings.models?.nameExists || "模型名称已存在");
       return;
     }
 
     try {
-      const response = await fetch("/api/models/add", {
+      const response = await fetch(`${getBackendBaseURL()}/api/models/add`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newModel),
@@ -137,10 +147,14 @@ export function ModelSettingsPage() {
           supports_thinking: false,
           supports_vision: false,
         });
+        setError(null);
         await fetchModels();
+      } else {
+        const data = await response.json();
+        setError(data.detail || t.settings.models?.addError || "添加模型失败");
       }
     } catch (err) {
-      setError("Failed to add model");
+      setError(t.settings.models?.addError || "添加模型失败");
     }
   };
 
@@ -148,7 +162,7 @@ export function ModelSettingsPage() {
     if (!editingModel) return;
 
     try {
-      const response = await fetch(`/api/models/${editingModel.name}`, {
+      const response = await fetch(`${getBackendBaseURL()}/api/models/${editingModel.name}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editingModel),
@@ -156,10 +170,14 @@ export function ModelSettingsPage() {
       if (response.ok) {
         setIsDialogOpen(false);
         setEditingModel(null);
+        setError(null);
         await fetchModels();
+      } else {
+        const data = await response.json();
+        setError(data.detail || t.settings.models?.updateError || "更新模型失败");
       }
     } catch (err) {
-      setError("Failed to update model");
+      setError(t.settings.models?.updateError || "更新模型失败");
     }
   };
 

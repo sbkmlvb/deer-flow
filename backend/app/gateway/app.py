@@ -1,17 +1,23 @@
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.gateway.config import get_gateway_config
 from app.gateway.routers import (
     agents,
     artifacts,
     channels,
+    langgraph,
     mcp,
     memory,
     models,
+    models_config,
     skills,
     suggestions,
     threads,
@@ -27,6 +33,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# 静态文件目录（用于打包模式）
+STATIC_DIR = Path(os.environ.get("DEERFLOW_STATIC_DIR", "")).resolve() if os.environ.get("DEERFLOW_STATIC_DIR") else None
 
 
 @asynccontextmanager
@@ -157,6 +166,9 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Models API is mounted at /api/models
     app.include_router(models.router)
 
+    # Models Config API is mounted at /api/models (for CRUD operations)
+    app.include_router(models_config.router)
+
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)
 
@@ -184,6 +196,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
 
+    # LangGraph 兼容 API (嵌入式 Agent 运行时)
+    # 提供 /api/langgraph/* 端点，使用 DeerFlowClient 实现
+    app.include_router(langgraph.router)
+
     @app.get("/health", tags=["health"])
     async def health_check() -> dict:
         """Health check endpoint.
@@ -192,6 +208,33 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
             Service health status information.
         """
         return {"status": "healthy", "service": "deer-flow-gateway"}
+
+    # ===== 静态文件服务（用于打包模式）=====
+    if STATIC_DIR and STATIC_DIR.exists():
+        logger.info(f" Serving static files from: {STATIC_DIR}")
+
+        # 挂载 _next 静态资源
+        next_static_dir = STATIC_DIR / "_next"
+        if next_static_dir.exists():
+            app.mount("/_next", StaticFiles(directory=str(next_static_dir)), name="next_static")
+            logger.info(f"  Mounted /_next")
+
+        # SPA fallback - 处理所有非 API 路由
+        @app.get("/{path:path}", include_in_schema=False)
+        async def serve_spa(path: str):
+            """SPA fallback - 返回 index.html"""
+            # 检查是否是静态文件请求
+            file_path = STATIC_DIR / path
+            if file_path.exists() and file_path.is_file():
+                return FileResponse(file_path)
+
+            # SPA fallback - 返回 index.html
+            index_path = STATIC_DIR / "index.html"
+            if index_path.exists():
+                return FileResponse(index_path)
+
+            # 404
+            return {"error": "Not found"}
 
     return app
 

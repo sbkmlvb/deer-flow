@@ -1,23 +1,21 @@
 import {
-  CompassIcon,
   GraduationCapIcon,
   ImageIcon,
+  LightbulbIcon,
   MicroscopeIcon,
   PenLineIcon,
   ShapesIcon,
-  SparklesIcon,
   VideoIcon,
+  WandIcon,
 } from "lucide-react";
 
 import type { Translations } from "./types";
 
 export const zhCN: Translations = {
-  // Locale meta
   locale: {
     localName: "中文",
   },
 
-  // Common
   common: {
     home: "首页",
     settings: "设置",
@@ -50,18 +48,16 @@ export const zhCN: Translations = {
     exportSuccess: "对话已导出",
   },
 
-  // Welcome
   welcome: {
     greeting: "你好，欢迎回来！",
     description:
-      "欢迎使用 🦌 DeerFlow，一个完全开源的超级智能体。通过内置和自定义的 Skills，\nDeerFlow 可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n图片、视频、播客及网页等，几乎可以做任何事情。",
+      "欢迎使用 JRAiController 专业舞台灯光控制助手。我可以帮助你管理灯光程序、\n编辑序列、配置 DMX 设备，以及协调舞台效果。",
 
-    createYourOwnSkill: "创建你自己的 Agent SKill",
+    createYourOwnSkill: "创建你的自定义技能",
     createYourOwnSkillDescription:
-      "创建你的 Agent Skill 来释放 DeerFlow 的潜力。通过自定义技能，DeerFlow\n可以帮你搜索网络、分析数据，还能为你生成幻灯片、\n网页等作品，几乎可以做任何事情。",
+      "创建你的自定义技能来扩展 JRAiController 的能力。通过自定义技能，\n你可以实现自动化灯光控制、序列生成等高级功能。",
   },
 
-  // Clipboard
   clipboard: {
     copyToClipboard: "复制到剪贴板",
     copiedToClipboard: "已复制到剪贴板",
@@ -69,11 +65,9 @@ export const zhCN: Translations = {
     linkCopied: "链接已复制到剪贴板",
   },
 
-  // Input Box
   inputBox: {
     placeholder: "今天我能为你做些什么？",
-    createSkillPrompt:
-      "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
+    createSkillPrompt: "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
     addAttachments: "添加附件",
     mode: "模式",
     flashMode: "闪速",
@@ -104,40 +98,40 @@ export const zhCN: Translations = {
     followupConfirmReplace: "替换并发送",
     suggestions: [
       {
-        suggestion: "写作",
-        prompt: "撰写一篇关于[主题]的博客文章",
-        icon: PenLineIcon,
+        suggestion: "灯光编程",
+        prompt: "帮我创建一个灯光程序，主题是[主题]",
+        icon: LightbulbIcon,
       },
       {
-        suggestion: "研究",
-        prompt: "深入浅出的研究一下[主题]，并总结发现。",
-        icon: MicroscopeIcon,
+        suggestion: "序列编辑",
+        prompt: "创建一个序列，包含[步骤数量]个灯光变化",
+        icon: VideoIcon,
       },
       {
-        suggestion: "收集",
-        prompt: "从[来源]收集数据并创建报告。",
+        suggestion: "素材管理",
+        prompt: "帮我整理[类型]素材，分类存放",
         icon: ShapesIcon,
       },
       {
         suggestion: "学习",
-        prompt: "学习关于[主题]并创建教程。",
+        prompt: "教我如何使用[功能]，创建一个教程",
         icon: GraduationCapIcon,
       },
     ],
     suggestionsCreate: [
       {
-        suggestion: "网页",
-        prompt: "生成一个关于[主题]的网页",
-        icon: CompassIcon,
+        suggestion: "灯光程序",
+        prompt: "生成一个关于[主题]的灯光程序",
+        icon: WandIcon,
       },
       {
-        suggestion: "图片",
-        prompt: "生成一个关于[主题]的图片",
+        suggestion: "编辑图片",
+        prompt: "处理一张[类型]的舞台背景图",
         icon: ImageIcon,
       },
       {
         suggestion: "视频",
-        prompt: "生成一个关于[主题]的视频",
+        prompt: "生成一个关于[主题]的视频素材",
         icon: VideoIcon,
       },
       {
@@ -145,14 +139,12 @@ export const zhCN: Translations = {
       },
       {
         suggestion: "技能",
-        prompt:
-          "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
-        icon: SparklesIcon,
+        prompt: "我们一起用 skill-creator 技能来创建一个技能吧。先问问我希望这个技能能做什么。",
+        icon: PenLineIcon,
       },
     ],
   },
 
-  // Sidebar
   sidebar: {
     newChat: "新对话",
     chats: "对话",
@@ -161,7 +153,6 @@ export const zhCN: Translations = {
     agents: "智能体",
   },
 
-  // Agents
   agents: {
     title: "智能体",
     description: "创建和管理具有专属 Prompt 与能力的自定义智能体。",
@@ -176,76 +167,68 @@ export const zhCN: Translations = {
     createPageTitle: "设计你的智能体",
     createPageSubtitle: "描述你想要的智能体，我来帮你通过对话创建。",
     nameStepTitle: "给新智能体起个名字",
-    nameStepHint:
-      "只允许字母、数字和连字符，存储时自动转为小写（例如 code-reviewer）",
+    nameStepHint: "只允许字母、数字和连字符，存储时自动转为小写（例如 code-reviewer）",
     nameStepPlaceholder: "例如 code-reviewer",
     nameStepContinue: "继续",
     nameStepInvalidError: "名称无效，只允许字母、数字和连字符",
     nameStepAlreadyExistsError: "已存在同名智能体",
     nameStepCheckError: "无法验证名称可用性，请稍后重试",
-    nameStepBootstrapMessage:
-      "新智能体的名称是 {name}，现在开始为它生成 **SOUL**。",
+    nameStepBootstrapMessage: "新智能体的名称是 {name}，现在开始为它生成 **SOUL**。",
     agentCreated: "智能体已创建！",
     startChatting: "开始对话",
     backToGallery: "返回 Gallery",
   },
 
-  // Breadcrumb
   breadcrumb: {
     workspace: "工作区",
     chats: "对话",
   },
 
-  // Workspace
   workspace: {
-    officialWebsite: "访问 DeerFlow 官方网站",
-    githubTooltip: "访问 DeerFlow 的 Github 仓库",
+    officialWebsite: "官方网站",
+    githubTooltip: "在 GitHub 上查看",
     settingsAndMore: "设置和更多",
-    visitGithub: "在 Github 上查看 DeerFlow",
+    visitGithub: "访问 GitHub",
     reportIssue: "报告问题",
     contactUs: "联系我们",
-    about: "关于 DeerFlow",
+    about: "关于",
   },
 
-  // Conversation
   conversation: {
     noMessages: "还没有消息",
     startConversation: "开始新的对话以查看消息",
   },
 
-  // Chats
   chats: {
     searchChats: "搜索对话",
   },
 
-  // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "JRAiController",
     chats: "对话",
     newChat: "新对话",
     untitled: "未命名",
   },
 
-  // Tool calls
   toolCalls: {
     moreSteps: (count: number) => `查看其他 ${count} 个步骤`,
     lessSteps: "隐藏步骤",
     executeCommand: "执行命令",
     presentFiles: "展示文件",
     needYourHelp: "需要你的协助",
-    useTool: (toolName: string) => `使用 “${toolName}” 工具`,
-    searchFor: (query: string) => `搜索 “${query}”`,
+    useTool: (toolName: string) => `使用 "${toolName}" 工具`,
+    searchFor: (query: string) => `搜索 "${query}"`,
     searchForRelatedInfo: "搜索相关信息",
     searchForRelatedImages: "搜索相关图片",
-    searchForRelatedImagesFor: (query: string) => `搜索相关图片 “${query}”`,
-    searchOnWebFor: (query: string) => `在网络上搜索 “${query}”`,
+    searchForRelatedImagesFor: (query: string) => `搜索相关图片 "${query}"`,
+    searchOnWebFor: (query: string) => `在网络上搜索 "${query}"`,
     viewWebPage: "查看网页",
     listFolder: "列出文件夹",
     readFile: "读取文件",
     writeFile: "写入文件",
     clickToViewContent: "点击查看文件内容",
     writeTodos: "更新 To-do 列表",
-    skillInstallTooltip: "安装技能并使其可在 DeerFlow 中使用",
+    skillInstallTooltip: "安装技能并使其可在 JRAiController 中使用",
   },
 
   uploads: {
@@ -255,36 +238,32 @@ export const zhCN: Translations = {
 
   subtasks: {
     subtask: "子任务",
-    executing: (count: number) =>
-      `${count > 1 ? "并行" : ""}执行 ${count} 个子任务`,
+    executing: (count: number) => `${count > 1 ? "并行" : ""}执行 ${count} 个子任务`,
     in_progress: "子任务运行中",
     completed: "子任务已完成",
     failed: "子任务失败",
   },
 
-  // Token Usage
   tokenUsage: {
     title: "Token 用量",
     input: "输入",
     output: "输出",
     total: "总计",
   },
-  
-  // Shortcuts
+
   shortcuts: {
     searchActions: "搜索操作...",
     noResults: "未找到结果。",
     actions: "操作",
     keyboardShortcuts: "键盘快捷键",
-    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 DeerFlow。",
+    keyboardShortcutsDescription: "使用键盘快捷键更快地操作 JRAiController。",
     openCommandPalette: "打开命令面板",
     toggleSidebar: "切换侧边栏",
   },
 
-  // Settings
   settings: {
     title: "设置",
-    description: "根据你的偏好调整 DeerFlow 的界面和行为。",
+    description: "根据你的偏好调整 JRAiController 的界面和行为。",
     sections: {
       appearance: "外观",
       models: "模型",
@@ -313,11 +292,17 @@ export const zhCN: Translations = {
       default: "默认",
       addDescription: "添加新的 AI 模型配置",
       editDescription: "修改模型配置",
+      loadError: "加载模型失败",
+      saveError: "保存配置失败",
+      deleteError: "删除模型失败",
+      addError: "添加模型失败",
+      updateError: "更新模型失败",
+      nameRequired: "名称和模型为必填项",
+      nameExists: "模型名称已存在",
     },
     memory: {
       title: "记忆",
-      description:
-        "DeerFlow 会在后台不断从你的对话中自动学习。这些记忆能帮助 DeerFlow 更好地理解你，并提供更个性化的体验。",
+      description: "JRAiController 会在后台不断从你的对话中自动学习。这些记忆能帮助 JRAiController 更好地理解你，并提供更个性化的体验。",
       empty: "暂无可展示的记忆数据。",
       rawJson: "原始 JSON",
       markdown: {
@@ -325,7 +310,7 @@ export const zhCN: Translations = {
         userContext: "用户上下文",
         work: "工作",
         personal: "个人",
-        topOfMind: "近期关注（Top of mind）",
+        topOfMind: "近期关注",
         historyBackground: "历史背景",
         recentMonths: "近几个月",
         earlierContext: "更早上下文",
@@ -370,19 +355,16 @@ export const zhCN: Translations = {
       description: "管理 Agent Skill 配置和启用状态。",
       createSkill: "新建技能",
       emptyTitle: "还没有技能",
-      emptyDescription:
-        "将你的 Agent Skill 文件夹放在 DeerFlow 根目录下的 `/skills/custom` 文件夹中。",
+      emptyDescription: "将你的 Agent Skill 文件夹放在 JRAiController 根目录下的 `/skills/custom` 文件夹中。",
       emptyButton: "创建你的第一个技能",
     },
     notification: {
       title: "通知",
-      description:
-        "DeerFlow 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
+      description: "JRAiController 只会在窗口不活跃时发送完成通知，特别适合长时间任务：你可以先去做别的事，完成后会收到提醒。",
       requestPermission: "请求通知权限",
-      deniedHint:
-        "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
+      deniedHint: "通知权限已被拒绝。可在浏览器的网站设置中重新开启，以接收完成提醒。",
       testButton: "发送测试通知",
-      testTitle: "DeerFlow",
+      testTitle: "JRAiController",
       testBody: "这是一条测试通知。",
       notSupported: "当前浏览器不支持通知功能。",
       disableNotification: "关闭通知",

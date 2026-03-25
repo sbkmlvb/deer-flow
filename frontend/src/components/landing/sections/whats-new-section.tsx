@@ -9,30 +9,30 @@ const COLOR = "#0a0a0a";
 const features: BentoCardProps[] = [
   {
     color: COLOR,
-    label: "Context Engineering",
-    title: "Long/Short-term Memory",
-    description: "Now the agent can better understand you",
+    label: "DMX Control",
+    title: "Art-Net / sACN",
+    description: "Support for industry standard lighting protocols",
   },
   {
     color: COLOR,
-    label: "Long Task Running",
-    title: "Planning and Sub-tasking",
+    label: "Multi-Universe",
+    title: "Universe Management",
     description:
-      "Plans ahead, reasons through complexity, then executes sequentially or in parallel",
+      "Manage multiple DMX universes simultaneously",
   },
   {
     color: COLOR,
     label: "Extensible",
     title: "Skills and Tools",
     description:
-      "Plug, play, or even swap built-in tools. Build the agent you want.",
+      "Plug, play, or even swap built-in tools. Build the lighting system you want.",
   },
 
   {
     color: COLOR,
     label: "Persistent",
-    title: "Sandbox with File System",
-    description: "Read, write, run — like a real computer",
+    title: "Project Files",
+    description: "Save, load, and manage your lighting projects",
   },
   {
     color: COLOR,
@@ -42,9 +42,9 @@ const features: BentoCardProps[] = [
   },
   {
     color: COLOR,
-    label: "Free",
-    title: "Open Source",
-    description: "MIT License, self-hosted, full control",
+    label: "Professional",
+    title: "Stage Ready",
+    description: "Designed for theaters, concerts, and live events",
   },
 ];
 
@@ -52,8 +52,8 @@ export function WhatsNewSection({ className }: { className?: string }) {
   return (
     <Section
       className={cn("", className)}
-      title="Whats New in DeerFlow 2.0"
-      subtitle="DeerFlow is now evolving from a Deep Research agent into a full-stack Super Agent"
+      title="JRAiController Features"
+      subtitle="Professional stage lighting control with advanced AI capabilities"
     >
       <div className="flex w-full items-center justify-center">
         <MagicBento data={features} />

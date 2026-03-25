@@ -263,6 +263,13 @@ export interface Translations {
       default: string;
       addDescription: string;
       editDescription: string;
+      loadError: string;
+      saveError: string;
+      deleteError: string;
+      addError: string;
+      updateError: string;
+      nameRequired: string;
+      nameExists: string;
     };
     memory: {
       title: string;

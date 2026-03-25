@@ -6,12 +6,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 DeerFlow is a LangGraph-based AI super agent system with a full-stack architecture. The backend provides a "super agent" with sandbox execution, persistent memory, subagent delegation, and extensible tool integration - all operating in per-thread isolated environments.
 
-**Architecture**:
+**Architecture (两种运行模式)**:
+
+### 1. 开发模式（分离服务）
 - **LangGraph Server** (port 2024): Agent runtime and workflow execution
 - **Gateway API** (port 8001): REST API for models, MCP, skills, memory, artifacts, uploads, and local thread cleanup
-- **Frontend** (port 3000): Next.js web interface
+- **Frontend** (port 3000): Next.js web interface (dev server)
 - **Nginx** (port 2026): Unified reverse proxy entry point
-- **Provisioner** (port 8002, optional in Docker dev): Started only when sandbox is configured for provisioner/Kubernetes mode
+
+### 2. 生产/打包模式（一体化）
+- **DeerFlowGateway** (port 8001): 单一可执行文件，包含：
+  - Gateway API (`/api/*`)
+  - **嵌入式 LangGraph 运行时** (`/api/langgraph/*`) - 使用 DeerFlowClient 实现，无需独立 LangGraph Server
+  - 静态文件服务（可选，设置 `DEERFLOW_STATIC_DIR`）
+- **Frontend** (port 3000): Next.js standalone，需要 Node.js 运行
+
+**关键特性**: Gateway 通过 `app/gateway/routers/langgraph.py` 提供与 LangGraph Server 兼容的 API，使用 `DeerFlowClient` 嵌入式客户端在进程内运行 Agent，无需独立的 LangGraph Server (port 2024)。
 
 **Project Structure**:
 ```
@@ -198,10 +208,13 @@ Configuration priority:
 
 FastAPI application on port 8001 with health check at `GET /health`.
 
+**重要**: Gateway 内置了 LangGraph 兼容 API (`/api/langgraph/*`)，使用 `DeerFlowClient` 嵌入式实现，**打包模式下无需独立的 LangGraph Server**。
+
 **Routers**:
 
 | Router | Endpoints |
 |--------|-----------|
+| **LangGraph 兼容** (`/api/langgraph`) | `POST /threads` - 创建线程; `POST /threads/{id}/runs/stream` - 流式对话; `POST /threads/{id}/runs/wait` - 同步对话; `GET /assistants` - 助手列表 |
 | **Models** (`/api/models`) | `GET /` - list models; `GET /{name}` - model details |
 | **MCP** (`/api/mcp`) | `GET /config` - get config; `PUT /config` - update config (saves to extensions_config.json) |
 | **Skills** (`/api/skills`) | `GET /` - list skills; `GET /{name}` - details; `PUT /{name}` - update enabled; `POST /install` - install from .skill archive (accepts standard optional frontmatter like `version`, `author`, `compatibility`) |
@@ -211,7 +224,9 @@ FastAPI application on port 8001 with health check at `GET /health`.
 | **Artifacts** (`/api/threads/{id}/artifacts`) | `GET /{path}` - serve artifacts; `?download=true` for file download |
 | **Suggestions** (`/api/threads/{id}/suggestions`) | `POST /` - generate follow-up questions; rich list/block model content is normalized before JSON parsing |
 
-Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → Gateway.
+**路由模式**:
+- 开发模式 (nginx): `/api/langgraph/*` → LangGraph Server (2024), 其他 `/api/*` → Gateway (8001)
+- 打包模式: 所有 `/api/*` → Gateway (8001)，其中 `/api/langgraph/*` 由嵌入式 DeerFlowClient 处理
 
 ### Sandbox System (`packages/harness/deerflow/sandbox/`)
 
@@ -284,6 +299,33 @@ Proxied through nginx: `/api/langgraph/*` → LangGraph, all other `/api/*` → 
 - Supports `supports_vision` flag for image understanding models
 - Config values starting with `$` resolved as environment variables
 - Missing provider modules surface actionable install hints from reflection resolvers (for example `uv add langchain-google-genai`)
+
+### LangGraph 兼容 API (`app/gateway/routers/langgraph.py`)
+
+**核心概念**: 使用 `DeerFlowClient` 嵌入式客户端实现 LangGraph Server 兼容 API，无需独立进程。
+
+**架构优势**:
+- 单进程部署：Gateway 和 Agent 运行时在同一进程
+- 零网络开销：进程内调用，无 HTTP 往返
+- 简化打包：只需打包一个可执行文件
+
+**API 端点**:
+
+| 端点 | 说明 |
+|------|------|
+| `POST /api/langgraph/threads` | 创建线程 |
+| `GET /api/langgraph/threads/{id}` | 获取线程状态 |
+| `DELETE /api/langgraph/threads/{id}` | 删除线程 |
+| `POST /api/langgraph/threads/{id}/runs` | 创建运行（非流式） |
+| `POST /api/langgraph/threads/{id}/runs/stream` | 创建流式运行 (SSE) |
+| `POST /api/langgraph/threads/{id}/runs/wait` | 创建运行并等待 |
+| `GET /api/langgraph/assistants` | 列出助手 |
+| `GET /api/langgraph/assistants/{id}` | 获取助手详情 |
+
+**实现细节**:
+- `DeerFlowClient` 导入 `deerflow` 模块，与 LangGraph Server 共享代码
+- 使用 `asyncio.run_in_executor()` 在线程池中运行同步的 `client.chat()` 和 `client.stream()`
+- SSE 流返回 `values`, `messages-tuple`, `end` 事件，与 LangGraph 协议兼容
 
 ### IM Channels System (`app/channels/`)
 
@@ -422,6 +464,8 @@ PYTHONPATH=. uv run pytest tests/test_<feature>.py -v
 
 ### Running the Full Application
 
+**开发模式** (推荐用于开发):
+
 From the **project root** directory:
 ```bash
 make dev
@@ -434,12 +478,42 @@ This starts all services and makes the application available at `http://localhos
 - `/api/*` (other) → Gateway API (8001)
 - `/` (non-API) → Frontend (3000)
 
+**生产/打包模式**:
+
+使用打包后的独立部署：
+```bash
+cd dist/deer-flow-package
+
+# 1. 配置 API 密钥
+cp .env.example .env
+nano .env  # 设置 ZHIPU_API_KEY
+
+# 2. 启动所有服务
+./start.sh
+```
+
+服务地址：
+- 前端: `http://localhost:3000`
+- Gateway API: `http://localhost:8001`
+- API 文档: `http://localhost:8001/docs`
+
+**打包模式架构**:
+```
+DeerFlowGateway (port 8001)
+├── /api/*                   - Gateway REST API
+├── /api/langgraph/*         - 嵌入式 LangGraph API (DeerFlowClient)
+└── /* (静态文件，可选)       - 前端静态文件服务
+
+Frontend (port 3000)
+└── Next.js standalone (需要 Node.js)
+```
+
 ### Running Backend Services Separately
 
 From the **backend** directory:
 
 ```bash
-# Terminal 1: LangGraph server
+# Terminal 1: LangGraph server (开发模式需要)
 make dev
 
 # Terminal 2: Gateway API
@@ -447,16 +521,19 @@ make gateway
 ```
 
 Direct access (without nginx):
-- LangGraph: `http://localhost:2024`
+- LangGraph: `http://localhost:2024` (仅开发模式)
 - Gateway: `http://localhost:8001`
+
+**注意**: 打包模式下不需要独立的 LangGraph Server，Gateway 内置了嵌入式 Agent 运行时。
 
 ### Frontend Configuration
 
 The frontend uses environment variables to connect to backend services:
-- `NEXT_PUBLIC_LANGGRAPH_BASE_URL` - Defaults to `/api/langgraph` (through nginx)
-- `NEXT_PUBLIC_BACKEND_BASE_URL` - Defaults to empty string (through nginx)
+- `NEXT_PUBLIC_LANGGRAPH_BASE_URL` - Defaults to `/api/langgraph` (through nginx or Gateway)
+- `NEXT_PUBLIC_BACKEND_BASE_URL` - Defaults to empty string (through nginx or Gateway)
 
 When using `make dev` from root, the frontend automatically connects through nginx.
+When using packaged mode, frontend connects to Gateway at `localhost:8001`.
 
 ## Key Features
 

@@ -9,7 +9,23 @@ from pathlib import Path
 import yaml
 
 # Allowed properties in SKILL.md frontmatter
-ALLOWED_FRONTMATTER_PROPERTIES = {"name", "description", "license", "allowed-tools", "metadata", "compatibility", "version", "author"}
+ALLOWED_FRONTMATTER_PROPERTIES = {
+    "name",
+    "description",
+    "summary",
+    "license",
+    "allowed-tools",
+    "metadata",
+    "compatibility",
+    "version",
+    "author",
+    "category",
+    "mcpTools",
+    "icon",
+    "tags",
+    "context",
+    "dependencies",
+}
 
 
 def _validate_skill_frontmatter(skill_dir: Path) -> tuple[bool, str, str | None]:
@@ -52,8 +68,8 @@ def _validate_skill_frontmatter(skill_dir: Path) -> tuple[bool, str, str | None]
     # Check required fields
     if "name" not in frontmatter:
         return False, "Missing 'name' in frontmatter", None
-    if "description" not in frontmatter:
-        return False, "Missing 'description' in frontmatter", None
+    if "description" not in frontmatter and "summary" not in frontmatter:
+        return False, "Missing 'description' or 'summary' in frontmatter", None
 
     # Validate name
     name = frontmatter.get("name", "")
@@ -72,7 +88,7 @@ def _validate_skill_frontmatter(skill_dir: Path) -> tuple[bool, str, str | None]
         return False, f"Name is too long ({len(name)} characters). Maximum is 64 characters.", None
 
     # Validate description
-    description = frontmatter.get("description", "")
+    description = frontmatter.get("description") or frontmatter.get("summary", "")
     if not isinstance(description, str):
         return False, f"Description must be a string, got {type(description).__name__}", None
     description = description.strip()

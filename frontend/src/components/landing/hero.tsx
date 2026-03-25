@@ -37,40 +37,21 @@ export function Hero({ className }: { className?: string }) {
       />
       <div className="container-md relative z-10 mx-auto flex h-screen flex-col items-center justify-center">
         <h1 className="flex items-center gap-2 text-4xl font-bold md:text-6xl">
-          <WordRotate
-            words={[
-              "Deep Research",
-              "Collect Data",
-              "Analyze Data",
-              "Generate Webpages",
-              "Vibe Coding",
-              "Generate Slides",
-              "Generate Images",
-              "Generate Podcasts",
-              "Generate Videos",
-              "Generate Songs",
-              "Organize Emails",
-              "Do Anything",
-              "Learn Anything",
-            ]}
-          />{" "}
-          <div>with DeerFlow</div>
+          <div>JRAiController</div>
         </h1>
         <p
           className="mt-8 scale-105 text-center text-2xl text-shadow-sm"
           style={{ color: "rgb(184,184,192)" }}
         >
-          An open-source SuperAgent harness that researches, codes, and creates.
-          With
+          专业舞台灯光控制
           <br />
-          the help of sandboxes, memories, tools, skills and subagents, it
-          handles
+          支持 DMX 协议（Art-Net/sACN）、媒体播放和多模块协调
           <br />
-          different levels of tasks that could take minutes to hours.
+          适用于剧院、演唱会和现场活动
         </p>
         <Link href="/workspace">
           <Button className="size-lg mt-8 scale-108" size="lg">
-            <span className="text-md">Get Started with 2.0</span>
+            <span className="text-md">开始使用</span>
             <ChevronRightIcon className="size-4" />
           </Button>
         </Link>
