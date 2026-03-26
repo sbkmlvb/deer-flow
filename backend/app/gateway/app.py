@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -160,14 +161,24 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
         ],
     )
 
-    # CORS is handled by nginx - no need for FastAPI middleware
+    # 添加 CORS 中间件（支持打包模式，无需 nginx）
+    config = get_gateway_config()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    logger.info(f"CORS middleware enabled for origins: {config.cors_origins}")
 
     # Include routers
+    # Models Config API is mounted at /api/models (for CRUD operations)
+    # Must be registered before models.router to avoid /api/models/{name} capturing /api/models/config
+    app.include_router(models_config.router)
+
     # Models API is mounted at /api/models
     app.include_router(models.router)
-
-    # Models Config API is mounted at /api/models (for CRUD operations)
-    app.include_router(models_config.router)
 
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)
@@ -241,3 +252,9 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
 
 # Create app instance for uvicorn
 app = create_app()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    config = get_gateway_config()
+    uvicorn.run(app, host=config.host, port=config.port)

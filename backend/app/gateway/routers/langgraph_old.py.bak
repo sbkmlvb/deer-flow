@@ -171,8 +171,20 @@ async def create_thread(request: ThreadCreateRequest | None = None):
 
 
 @router.get("/threads/{thread_id}", response_model=ThreadStateResponse)
+async def get_thread(thread_id: str):
+    """获取线程（LangGraph SDK threads.get 兼容）"""
+    # DeerFlowClient 不直接支持获取历史状态，返回空状态
+    return ThreadStateResponse(
+        values={"messages": []},
+        next=[],
+        created_at=None,
+        metadata={"thread_id": thread_id},
+    )
+
+
+@router.get("/threads/{thread_id}/state", response_model=ThreadStateResponse)
 async def get_thread_state(thread_id: str):
-    """获取线程状态"""
+    """获取线程状态（LangGraph SDK threads.getState 兼容）"""
     # DeerFlowClient 不直接支持获取历史状态，返回空状态
     return ThreadStateResponse(
         values={"messages": []},
@@ -193,6 +205,46 @@ async def list_threads():
     """列出线程"""
     # DeerFlowClient 不维护线程列表，返回空列表
     return ThreadsListResponse(threads=[])
+
+
+@router.post("/threads/search")
+async def search_threads():
+    """搜索线程"""
+    # DeerFlowClient 不维护线程列表，返回空列表
+    # LangGraph SDK expects an array directly, not {"threads": []}
+    return []
+
+
+@router.post("/threads/{thread_id}/history")
+async def get_thread_history(thread_id: str):
+    """获取线程历史"""
+    # LangGraph SDK expects an array of ThreadState, then calls .at(0) to get first element
+    # Return empty array since DeerFlowClient doesn't maintain history
+    return []
+
+
+class UpdateStateRequest(BaseModel):
+    """更新状态请求"""
+
+    values: dict[str, Any] = Field(default_factory=dict, description="状态值")
+    checkpoint_id: str | None = Field(default=None, description="检查点ID")
+    as_node: str | None = Field(default=None, description="节点名")
+
+
+@router.post("/threads/{thread_id}/state")
+async def update_thread_state(thread_id: str, request: UpdateStateRequest):
+    """更新线程状态（LangGraph SDK threads.updateState 兼容）
+
+    用于重命名线程等操作，前端 useRenameThread 使用此端点
+    """
+    # DeerFlowClient 不支持状态更新，但需要返回正确格式
+    # SDK 期望返回 {"configurable": {"thread_id": ..., "checkpoint_id": ...}}
+    return {
+        "configurable": {
+            "thread_id": thread_id,
+            "checkpoint_id": request.checkpoint_id,
+        }
+    }
 
 
 # ============== 运行 API ==============
@@ -352,20 +404,35 @@ async def create_run_wait(thread_id: str, request: RunCreateRequest):
 # ============== 助手 API ==============
 
 
+def _get_default_assistant() -> dict[str, Any]:
+    """获取默认助手"""
+    return {
+        "assistant_id": "lead_agent",
+        "graph_id": "lead_agent",
+        "name": "Lead Agent",
+        "description": "DeerFlow 主代理",
+        "config": {},
+        "created_at": "",
+        "updated_at": "",
+        "metadata": {},
+        "version": 1,
+        "context": None,
+    }
+
+
 @router.get("/assistants")
 async def list_assistants():
-    """列出可用助手"""
-    return {
-        "assistants": [
-            {
-                "assistant_id": "lead_agent",
-                "graph_id": "lead_agent",
-                "name": "Lead Agent",
-                "description": "DeerFlow 主代理",
-                "config": {},
-            }
-        ]
-    }
+    """列出可用助手（兼容旧 API）"""
+    return [_get_default_assistant()]
+
+
+@router.post("/assistants/search")
+async def search_assistants():
+    """搜索助手（LangGraph SDK assistants.search 兼容）
+
+    SDK 期望直接返回 Assistant[] 数组
+    """
+    return [_get_default_assistant()]
 
 
 @router.get("/assistants/{assistant_id}")
@@ -374,10 +441,4 @@ async def get_assistant(assistant_id: str):
     if assistant_id != "lead_agent":
         raise HTTPException(status_code=404, detail=f"Assistant {assistant_id} not found")
 
-    return {
-        "assistant_id": "lead_agent",
-        "graph_id": "lead_agent",
-        "name": "Lead Agent",
-        "description": "DeerFlow 主代理",
-        "config": {},
-    }
+    return _get_default_assistant()
