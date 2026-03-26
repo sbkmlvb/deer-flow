@@ -303,7 +303,34 @@ def package_all():
 
     log(f"✓ 前端复制完成（node_modules 需通过 install.sh 安装）")
 
-    # 3. 复制配置文件
+    # 3. 复制 Node.js 运行时（如果存在）
+    node_src = DEERFLOW_ROOT / "node"
+    if node_src.exists():
+        node_dest = OUTPUT_DIR / "node"
+        if node_dest.exists():
+            shutil.rmtree(node_dest)
+
+        # 复制完整 Node.js 目录（bin + lib）
+        node_dest.mkdir(parents=True)
+
+        # 复制 bin 目录
+        if (node_src / "bin").exists():
+            shutil.copytree(node_src / "bin", node_dest / "bin")
+            # 确保可执行权限
+            for f in (node_dest / "bin").glob("*"):
+                f.chmod(0o755)
+
+        # 复制 lib 目录（包含 npm, corepack）
+        if (node_src / "lib").exists():
+            shutil.copytree(node_src / "lib", node_dest / "lib")
+
+        # 计算总大小
+        total_size = sum(f.stat().st_size for f in node_dest.rglob("*") if f.is_file())
+        log(f"✓ 复制 Node.js 运行时 ({total_size / 1024 / 1024:.1f}MB)")
+    else:
+        log("⚠ 跳过 Node.js (deer-flow/node 不存在，用户需自行安装)")
+
+    # 4. 复制配置文件
     config_files = [
         "config.yaml",
         "config.example.yaml",
@@ -366,26 +393,34 @@ log_info "=========================================="
 log_info "DeerFlow 依赖安装"
 log_info "=========================================="
 
-# 检查 Node.js
-if ! command -v node &> /dev/null; then
-    log_error "未找到 Node.js，请先安装 Node.js 20+"
-    log_info "推荐使用 nvm 安装:"
-    log_info "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
-    log_info "  nvm install 20"
+# 设置 Node.js 命令：优先使用打包目录中的 node，其次使用系统 node
+BUNDLED_NODE="$SCRIPT_DIR/node/bin/node"
+BUNDLED_NPM="$SCRIPT_DIR/node/bin/npm"
+if [ -x "$BUNDLED_NODE" ]; then
+    export PATH="$SCRIPT_DIR/node/bin:$PATH"
+    NODE_CMD="$BUNDLED_NODE"
+    NPM_CMD="$BUNDLED_NPM"
+    log_info "✓ 使用打包目录中的 Node.js: $($NODE_CMD -v)"
+elif command -v node &> /dev/null; then
+    NODE_CMD="node"
+    NPM_CMD="npm"
+    log_info "✓ 使用系统 Node.js: $($NODE_CMD -v)"
+else
+    log_error "未找到 Node.js"
+    log_info "请安装 Node.js 20+ 或确保 node/bin/node 二进制存在"
     exit 1
 fi
 
-NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+NODE_VERSION=$($NODE_CMD -v | cut -d'v' -f2 | cut -d'.' -f1)
 if [ "$NODE_VERSION" -lt 20 ]; then
-    log_error "Node.js 版本过低 (当前: v$(node -v))，需要 20+"
+    log_error "Node.js 版本过低 (当前: v$($NODE_CMD -v))，需要 20+"
     exit 1
 fi
-log_info "✓ Node.js 版本: $(node -v)"
 
 # 检查 pnpm
 if ! command -v pnpm &> /dev/null; then
     log_warn "未找到 pnpm，正在安装..."
-    npm install -g pnpm
+    $NPM_CMD install -g pnpm
     if [ $? -ne 0 ]; then
         log_error "pnpm 安装失败"
         exit 1
@@ -456,6 +491,15 @@ log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
 # 默认端口
 GATEWAY_PORT=${GATEWAY_PORT:-8001}
 FRONTEND_PORT=${FRONTEND_PORT:-3001}
+
+# 设置 Node.js 命令：优先使用打包目录中的 node
+BUNDLED_NODE="$SCRIPT_DIR/node/bin/node"
+if [ -x "$BUNDLED_NODE" ]; then
+    export PATH="$SCRIPT_DIR/node/bin:$PATH"
+    NODE_CMD="$BUNDLED_NODE"
+else
+    NODE_CMD="node"
+fi
 
 # 强制杀死占用端口的进程
 kill_port() {
@@ -575,10 +619,11 @@ done
 log_step "启动前端..."
 if [ -d "$FRONTEND_DIR" ]; then
     cd "$FRONTEND_DIR"
-    PORT=$FRONTEND_PORT nohup node server.js > /tmp/frontend.log 2>&1 &
+    PORT=$FRONTEND_PORT nohup $NODE_CMD server.js > /tmp/frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd "$SCRIPT_DIR"
     log_info "前端 PID: $FRONTEND_PID"
+    log_info "使用 Node: $NODE_CMD"
 
     # 等待前端启动
     for i in {1..15}; do
