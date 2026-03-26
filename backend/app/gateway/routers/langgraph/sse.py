@@ -313,7 +313,9 @@ async def deerflow_stream_to_langgraph_sse(
                 )
             elif event_type == "messages-tuple":
                 # messages-tuple 事件包含单条消息
-                yield format_sse_event("messages-tuple", event_data)
+                # LangGraph SDK 期望格式: event: "messages", data: [message, metadata]
+                # event_data 是消息对象，需要包装成数组格式
+                yield format_sse_event("messages", [event_data, {"tags": []}])
             elif event_type == "end":
                 # end 事件标记流结束
                 # 状态由 checkpointer 管理，不需要手动同步

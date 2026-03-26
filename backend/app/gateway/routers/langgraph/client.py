@@ -226,6 +226,7 @@ class ThreadStore:
         """获取线程
 
         会从 checkpointer 读取最新的 values（messages 等）。
+        如果线程不在内存缓存中但存在于 checkpointer，会自动恢复线程元数据。
         """
         with _lock:
             thread = self._threads.get(thread_id)
@@ -233,6 +234,23 @@ class ThreadStore:
                 self._threads.move_to_end(thread_id)
                 # 从 checkpointer 读取最新的 values
                 thread.values = _get_values_from_checkpointer(thread_id)
+            else:
+                # 尝试从 checkpointer 恢复线程
+                values = _get_values_from_checkpointer(thread_id)
+                if values.get("messages"):  # checkpointer 中有数据
+                    logger.info("Recovering thread %s from checkpointer", thread_id)
+                    # 创建线程元数据
+                    now = datetime.utcnow().isoformat() + "+00:00"
+                    thread = ThreadState(
+                        thread_id=thread_id,
+                        created_at=now,
+                        updated_at=now,
+                        metadata={"recovered": True},
+                        values=values,
+                        status="idle",
+                    )
+                    self._threads[thread_id] = thread
+                    self._save_thread_metadata(thread)
             return thread
 
     def update(

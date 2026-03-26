@@ -137,9 +137,15 @@ async def stream_run(thread_id: str, request: RunStreamRequest):
             # 更新运行状态
             manager.runs.update(run.run_id, status="success")
 
+            # 更新线程的 updated_at 时间戳，确保前端能检测到线程更新
+            # 这会触发线程列表刷新，显示新的历史记录
+            manager.threads.update(thread_id, status="idle")
+
         except Exception as e:
             logger.exception("Run stream error")
             manager.runs.update(run.run_id, status="error")
+            # 出错时也更新线程状态
+            manager.threads.update(thread_id, status="error")
             yield SSEEventBuilder.error(message=str(e), code="RUN_ERROR")
             yield SSEEventBuilder.end()
 

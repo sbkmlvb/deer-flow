@@ -76,7 +76,7 @@ class Config(BaseModel):
 class Checkpoint(BaseModel):
     """检查点"""
 
-    thread_id: str = Field(description="线程ID")
+    thread_id: str | None = Field(default=None, description="线程ID（在请求体中可选，URL路径中已提供）")
     checkpoint_ns: str = Field(default="", description="检查点命名空间")
     checkpoint_id: str | None = Field(default=None, description="检查点ID")
     checkpoint_map: dict[str, Any] | None = Field(default=None, description="检查点数据映射")
