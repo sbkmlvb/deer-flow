@@ -1,7 +1,8 @@
 """Middleware for intercepting clarification requests and presenting them to the user."""
 
+import json
 from collections.abc import Callable
-from typing import override
+from typing import Any, override
 
 from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware
@@ -22,71 +23,138 @@ class ClarificationMiddleware(AgentMiddleware[ClarificationMiddlewareState]):
 
     When the model calls the `ask_clarification` tool, this middleware:
     1. Intercepts the tool call before execution
-    2. Extracts the clarification question and metadata
-    3. Formats a user-friendly message
-    4. Returns a Command that interrupts execution and presents the question
+    2. Extracts the questions and metadata
+    3. Formats a message with structured data for frontend wizard rendering
+    4. Returns a Command that interrupts execution and presents the questions
     5. Waits for user response before continuing
 
-    This replaces the tool-based approach where clarification continued the conversation flow.
+    This enables a multi-question wizard UI where users can navigate step by step.
     """
 
     state_schema = ClarificationMiddlewareState
 
-    def _is_chinese(self, text: str) -> bool:
-        """Check if text contains Chinese characters.
+    def _normalize_option(self, option: dict[str, Any] | str, index: int) -> dict[str, Any]:
+        """Normalize an option to structured format.
 
         Args:
-            text: Text to check
+            option: Raw option (string or dict)
+            index: Option index for generating value
 
         Returns:
-            True if text contains Chinese characters
+            Normalized option dict with label, description, value, recommended
         """
-        return any("\u4e00" <= char <= "\u9fff" for char in text)
+        if isinstance(option, str):
+            return {
+                "label": option,
+                "description": None,
+                "value": str(index + 1),
+                "recommended": False,
+            }
+        elif isinstance(option, dict):
+            return {
+                "label": option.get("label", f"Option {index + 1}"),
+                "description": option.get("description"),
+                "value": option.get("value", str(index + 1)),
+                "recommended": option.get("recommended", False),
+            }
+        else:
+            return {
+                "label": str(option),
+                "description": None,
+                "value": str(index + 1),
+                "recommended": False,
+            }
+
+    def _normalize_question(self, question: dict[str, Any], index: int) -> dict[str, Any]:
+        """Normalize a question to structured format.
+
+        Args:
+            question: Raw question dict
+            index: Question index
+
+        Returns:
+            Normalized question dict
+        """
+        question_id = question.get("id", f"q_{index}")
+        question_text = question.get("question", "")
+        question_type = question.get("type", "single_choice")
+        raw_options = question.get("options", [])
+        allow_custom = question.get("allow_custom", False)
+
+        # Normalize options
+        normalized_options = []
+        if isinstance(raw_options, list):
+            for i, opt in enumerate(raw_options):
+                normalized_options.append(self._normalize_option(opt, i))
+
+        return {
+            "id": question_id,
+            "question": question_text,
+            "type": question_type,
+            "options": normalized_options,
+            "allow_custom": allow_custom,
+            "placeholder": question.get("placeholder"),
+            "default_value": question.get("default_value"),
+            "required": question.get("required", True),
+        }
 
     def _format_clarification_message(self, args: dict) -> str:
         """Format the clarification arguments into a user-friendly message.
+
+        This creates a JSON-embedded message that the frontend can parse for wizard rendering.
 
         Args:
             args: The tool call arguments containing clarification details
 
         Returns:
-            Formatted message string
+            Formatted message string with embedded JSON data
         """
-        question = args.get("question", "")
-        clarification_type = args.get("clarification_type", "missing_info")
+        raw_questions = args.get("questions", [])
+        title = args.get("title")
         context = args.get("context")
-        options = args.get("options", [])
 
-        # Type-specific icons
-        type_icons = {
-            "missing_info": "❓",
-            "ambiguous_requirement": "🤔",
-            "approach_choice": "🔀",
-            "risk_confirmation": "⚠️",
-            "suggestion": "💡",
+        # Normalize questions
+        normalized_questions = []
+        if isinstance(raw_questions, list):
+            for i, q in enumerate(raw_questions):
+                if isinstance(q, dict):
+                    normalized_questions.append(self._normalize_question(q, i))
+
+        # Build structured data for frontend
+        clarification_data = {
+            "title": title,
+            "context": context,
+            "questions": normalized_questions,
+            "total_questions": len(normalized_questions),
         }
 
-        icon = type_icons.get(clarification_type, "❓")
+        # Embed structured data as JSON for frontend to parse
+        json_data = json.dumps(clarification_data, ensure_ascii=False)
 
-        # Build the message naturally
-        message_parts = []
+        # Create a human-readable preview for fallback
+        preview_parts = []
 
-        # Add icon and question together for a more natural flow
+        if title:
+            preview_parts.append(f"📋 {title}")
         if context:
-            # If there's context, present it first as background
-            message_parts.append(f"{icon} {context}")
-            message_parts.append(f"\n{question}")
-        else:
-            # Just the question with icon
-            message_parts.append(f"{icon} {question}")
+            preview_parts.append(context)
 
-        # Add options in a cleaner format
-        if options and len(options) > 0:
-            message_parts.append("")  # blank line for spacing
-            for i, option in enumerate(options, 1):
-                message_parts.append(f"  {i}. {option}")
+        if normalized_questions:
+            preview_parts.append("")
+            for i, q in enumerate(normalized_questions, 1):
+                q_text = q.get("question", "")
+                q_type = q.get("type", "single_choice")
+                type_indicator = {
+                    "single_choice": "🔘",
+                    "multiple_choice": "☑️",
+                    "text_input": "✏️",
+                    "confirmation": "⚠️",
+                }.get(q_type, "❓")
+                preview_parts.append(f"  {i}. {type_indicator} {q_text}")
 
-        return "\n".join(message_parts)
+        # Combine: hidden JSON block + human-readable preview
+        # Frontend will detect and parse the JSON block for rich rendering
+        return f"<!--CLARIFICATION_DATA\n{json_data}\n-->\n" + "\n".join(preview_parts)
 
     def _handle_clarification(self, request: ToolCallRequest) -> Command:
         """Handle clarification request and return command to interrupt execution.
@@ -99,10 +167,9 @@ class ClarificationMiddleware(AgentMiddleware[ClarificationMiddlewareState]):
         """
         # Extract clarification arguments
         args = request.tool_call.get("args", {})
-        question = args.get("question", "")
 
         print("[ClarificationMiddleware] Intercepted clarification request")
-        print(f"[ClarificationMiddleware] Question: {question}")
+        print(f"[ClarificationMiddleware] Questions count: {len(args.get('questions', []))}")
 
         # Format the clarification message
         formatted_message = self._format_clarification_message(args)
@@ -110,7 +177,7 @@ class ClarificationMiddleware(AgentMiddleware[ClarificationMiddlewareState]):
         # Get the tool call ID
         tool_call_id = request.tool_call.get("id", "")
 
-        # Create a ToolMessage with the formatted question
+        # Create a ToolMessage with the formatted questions
         # This will be added to the message history
         tool_message = ToolMessage(
             content=formatted_message,

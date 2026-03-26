@@ -251,6 +251,27 @@ export const zhCN: Translations = {
     total: "总计",
   },
 
+  clarification: {
+    step: (current: number, total: number) => `第 ${current}/${total} 步`,
+    recommended: "推荐",
+    other: "其他...",
+    customPlaceholder: "请输入自定义内容...",
+    back: "上一步",
+    skip: "跳过",
+    confirm: "确认",
+    submitting: "提交中...",
+    next: "下一步",
+    submitAll: "提交全部",
+    optional: "可选",
+    enterText: "请输入...",
+    selectedCount: (count: number) => `已选择 ${count} 项`,
+    // Validation errors
+    errorRequired: "此问题为必填项，请回答后再继续",
+    errorNoQuestion: "没有找到问题",
+    errorSelectOne: "请至少选择一个选项",
+    errorCustomRequired: "请输入自定义内容",
+  },
+
   shortcuts: {
     searchActions: "搜索操作...",
     noResults: "未找到结果。",

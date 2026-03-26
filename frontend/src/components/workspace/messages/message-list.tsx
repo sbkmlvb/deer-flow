@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { ArtifactFileList } from "../artifacts/artifact-file-list";
 import { StreamingIndicator } from "../streaming-indicator";
 
+import { ClarificationCard, isClarificationMessage } from "./clarification-card";
 import { MarkdownContent } from "./markdown-content";
 import { MessageGroup } from "./message-group";
 import { MessageListItem } from "./message-list-item";
@@ -34,11 +35,13 @@ export function MessageList({
   threadId,
   thread,
   paddingBottom = 160,
+  onClarificationRespond,
 }: {
   className?: string;
   threadId: string;
   thread: BaseStream<AgentThreadState>;
   paddingBottom?: number;
+  onClarificationRespond?: (response: string) => void;
 }) {
   const { t } = useI18n();
   const rehypePlugins = useRehypeSplitWordsIntoSpans(thread.isLoading);
@@ -66,10 +69,23 @@ export function MessageList({
           } else if (group.type === "assistant:clarification") {
             const message = group.messages[0];
             if (message && hasContent(message)) {
+              const content = extractContentFromMessage(message);
+              // Use interactive ClarificationCard if structured data is detected
+              if (isClarificationMessage(content)) {
+                return (
+                  <ClarificationCard
+                    key={group.id}
+                    content={content}
+                    isLoading={thread.isLoading}
+                    onRespond={onClarificationRespond}
+                  />
+                );
+              }
+              // Fallback to plain markdown for old format
               return (
                 <MarkdownContent
                   key={group.id}
-                  content={extractContentFromMessage(message)}
+                  content={content}
                   isLoading={thread.isLoading}
                   rehypePlugins={rehypePlugins}
                 />

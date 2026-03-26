@@ -21,21 +21,23 @@ deer-flow-package/
 ├── frontend/              # Next.js standalone 前端
 │   ├── server.js          # 入口文件
 │   ├── .next/static/      # 静态资源
-│   ├── node_modules/      # 最小依赖
+│   ├── node_modules/      # (需运行 install.sh 安装)
 │   └── public/            # 公共资源
 ├── config.yaml            # 主配置文件
 ├── config.example.yaml    # 配置模板
 ├── extensions_config.json # MCP/Skills 配置
 ├── .env.example           # 环境变量模板
+├── install.sh             # 安装依赖脚本
 ├── start.sh               # 完整启动脚本（前端 + Gateway）
 ├── stop.sh                # 停止脚本
 └── start-dev.sh           # 开发模式启动（仅 Gateway）
 
 使用方法：
-1. 运行打包: python3 scripts/package_deerflow.py
+1. 运行打包: python3 package.py
 2. 部署: 复制 dist/deer-flow-package/ 到目标机器
-3. 配置: 编辑 .env 设置 API 密钥
-4. 启动: ./start.sh
+3. 安装依赖: ./install.sh
+4. 配置: 编辑 .env 设置 API 密钥
+5. 启动: ./start.sh
 
 依赖要求：
 - pnpm: 前端构建
@@ -187,6 +189,59 @@ def build_frontend():
     return True
 
 
+# 前端不需要复制的文件/目录（standalone 模式只需要 server.js + .next + public）
+FRONTEND_EXCLUDE_PATTERNS = [
+    # 源码目录
+    "src",
+    # 开发配置文件（保留 .env.example, package.json, pnpm-lock.yaml）
+    "*.md",
+    "Dockerfile",
+    "eslint.config.js",
+    "tsconfig.json",
+    "next.config.ts",
+    "postcss.config.js",
+    "prettier.config.js",
+    "pnpm-workspace.yaml",
+    "Makefile",
+    "components.json",
+    # 脚本和辅助文件
+    "scripts",
+    "start.js",
+    "start-frontend.js",
+    "package-lock.json",
+    # 依赖目录
+    "node_modules",
+]
+
+
+def _should_exclude_frontend(name: str) -> bool:
+    """检查前端文件是否应该排除"""
+    import fnmatch
+    for pattern in FRONTEND_EXCLUDE_PATTERNS:
+        if fnmatch.fnmatch(name, pattern):
+            return True
+    return False
+
+
+def _copy_tree_filtered(src: Path, dest: Path) -> int:
+    """复制目录树，排除不需要的文件"""
+    import fnmatch
+    count = 0
+    dest.mkdir(parents=True, exist_ok=True)
+
+    for item in src.iterdir():
+        if _should_exclude_frontend(item.name):
+            continue
+
+        if item.is_dir():
+            count += _copy_tree_filtered(item, dest / item.name)
+        else:
+            shutil.copy2(item, dest / item.name)
+            count += 1
+
+    return count
+
+
 def package_all():
     """打包所有组件"""
     log("=" * 50)
@@ -208,12 +263,25 @@ def package_all():
         log("错误: 找不到 DeerFlowGateway", "error")
         return False
 
-    # 2. 复制前端（standalone）
+    # 2. 复制前端（standalone，排除源码和开发配置）
     frontend_src = FRONTEND_DIR / ".next" / "standalone"
     frontend_dest = OUTPUT_DIR / "frontend"
 
-    log("复制前端文件...")
-    shutil.copytree(frontend_src, frontend_dest)
+    log("复制前端文件（仅运行必需文件）...")
+    file_count = _copy_tree_filtered(frontend_src, frontend_dest)
+    log(f"✓ 复制 {file_count} 个文件")
+
+    # 复制 package.json 和 lock 文件（用于 install.sh 安装依赖）
+    package_json_src = FRONTEND_DIR / "package.json"
+    package_lock_src = FRONTEND_DIR / "pnpm-lock.yaml"
+
+    if package_json_src.exists():
+        shutil.copy2(package_json_src, frontend_dest / "package.json")
+        log("✓ 复制 package.json")
+
+    if package_lock_src.exists():
+        shutil.copy2(package_lock_src, frontend_dest / "pnpm-lock.yaml")
+        log("✓ 复制 pnpm-lock.yaml")
 
     # 复制静态资源（standalone 模式需要手动复制）
     static_src = FRONTEND_DIR / ".next" / "static"
@@ -233,7 +301,7 @@ def package_all():
         shutil.copytree(public_src, public_dest)
         log("✓ 复制 public")
 
-    log(f"✓ 前端复制完成")
+    log(f"✓ 前端复制完成（node_modules 需通过 install.sh 安装）")
 
     # 3. 复制配置文件
     config_files = [
@@ -271,6 +339,97 @@ def create_scripts():
     log("=" * 50)
     log("创建启动脚本...")
     log("=" * 50)
+
+    # 安装依赖脚本
+    install_script = '''#!/bin/bash
+# DeerFlow 依赖安装脚本
+# 安装前端所需的 node_modules
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# 颜色定义
+GREEN='\\033[0;32m'
+YELLOW='\\033[1;33m'
+RED='\\033[0;31m'
+BLUE='\\033[0;34m'
+NC='\\033[0m'
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_step() { echo -e "${BLUE}[STEP]${NC} $1"; }
+
+log_info "=========================================="
+log_info "DeerFlow 依赖安装"
+log_info "=========================================="
+
+# 检查 Node.js
+if ! command -v node &> /dev/null; then
+    log_error "未找到 Node.js，请先安装 Node.js 20+"
+    log_info "推荐使用 nvm 安装:"
+    log_info "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+    log_info "  nvm install 20"
+    exit 1
+fi
+
+NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+if [ "$NODE_VERSION" -lt 20 ]; then
+    log_error "Node.js 版本过低 (当前: v$(node -v))，需要 20+"
+    exit 1
+fi
+log_info "✓ Node.js 版本: $(node -v)"
+
+# 检查 pnpm
+if ! command -v pnpm &> /dev/null; then
+    log_warn "未找到 pnpm，正在安装..."
+    npm install -g pnpm
+    if [ $? -ne 0 ]; then
+        log_error "pnpm 安装失败"
+        exit 1
+    fi
+fi
+log_info "✓ pnpm 版本: $(pnpm -v)"
+
+# 安装前端依赖
+FRONTEND_DIR="$SCRIPT_DIR/frontend"
+if [ -d "$FRONTEND_DIR" ]; then
+    log_step "安装前端依赖..."
+    cd "$FRONTEND_DIR"
+
+    if [ -f "package.json" ]; then
+        # 使用 pnpm 安装，只安装 production 依赖
+        pnpm install --prod --frozen-lockfile
+
+        if [ $? -eq 0 ]; then
+            log_info "✓ 前端依赖安装完成"
+        else
+            log_error "前端依赖安装失败"
+            exit 1
+        fi
+    else
+        log_error "未找到 frontend/package.json"
+        exit 1
+    fi
+else
+    log_error "未找到 frontend 目录"
+    exit 1
+fi
+
+log_info ""
+log_info "=========================================="
+log_info "依赖安装完成!"
+log_info "=========================================="
+log_info "现在可以运行 ./start.sh 启动服务"
+log_info ""
+'''
+
+    install_path = OUTPUT_DIR / "install.sh"
+    install_path.write_text(install_script)
+    install_path.chmod(0o755)
+    log("✓ 创建 install.sh")
 
     # 启动脚本
     start_script = '''#!/bin/bash
@@ -338,6 +497,19 @@ stop_all() {
 # 捕获退出信号（仅前台模式）
 trap 'log_info "收到退出信号..."; stop_all; exit 0' INT TERM
 
+# 检查前端依赖
+FRONTEND_DIR="$SCRIPT_DIR/frontend"
+if [ -d "$FRONTEND_DIR" ]; then
+    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+        log_error "=========================================="
+        log_error "前端依赖未安装!"
+        log_error "=========================================="
+        log_error "请先运行: ./install.sh"
+        log_error ""
+        exit 1
+    fi
+fi
+
 # 设置配置路径
 export DEER_FLOW_CONFIG_PATH="${DEER_FLOW_CONFIG_PATH:-$SCRIPT_DIR/config.yaml}"
 export DEER_FLOW_EXTENSIONS_CONFIG_PATH="${DEER_FLOW_EXTENSIONS_CONFIG_PATH:-$SCRIPT_DIR/extensions_config.json}"
@@ -401,7 +573,6 @@ done
 
 # 启动前端
 log_step "启动前端..."
-FRONTEND_DIR="$SCRIPT_DIR/frontend"
 if [ -d "$FRONTEND_DIR" ]; then
     cd "$FRONTEND_DIR"
     PORT=$FRONTEND_PORT nohup node server.js > /tmp/frontend.log 2>&1 &
@@ -616,17 +787,19 @@ def main():
     print()
     log("目录结构:")
     log("  ├── DeerFlowGateway    # Gateway API")
-    log("  ├── frontend/          # Next.js 前端")
+    log("  ├── frontend/          # Next.js 前端（需安装依赖）")
     log("  ├── config.yaml        # 配置文件")
-    log("  ├── .env               # 环境变量")
+    log("  ├── .env.example       # 环境变量模板")
+    log("  ├── install.sh         # 安装依赖脚本")
     log("  ├── start.sh           # 启动脚本")
     log("  └── stop.sh            # 停止脚本")
     print()
-    log("使用方法:")
-    log("  cd dist/deer-flow-package")
-    log("  # 1. 编辑 .env 配置 API 密钥")
-    log("  # 2. 启动服务")
-    log("  ./start.sh")
+    log("部署步骤:")
+    log("  1. 复制 dist/deer-flow-package/ 到目标机器")
+    log("  2. cd deer-flow-package")
+    log("  3. ./install.sh        # 安装依赖（需要 Node.js 20+）")
+    log("  4. cp .env.example .env && 编辑配置 API 密钥")
+    log("  5. ./start.sh          # 启动服务")
     print()
     log("服务地址:")
     log("  前端:     http://localhost:3001")

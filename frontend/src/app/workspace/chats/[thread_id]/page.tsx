@@ -67,6 +67,14 @@ export default function ChatPage() {
     },
     [sendMessage, threadId],
   );
+
+  const handleClarificationRespond = useCallback(
+    (response: string) => {
+      void sendMessage(threadId, { text: response, files: [] });
+    },
+    [sendMessage, threadId],
+  );
+
   const handleStop = useCallback(async () => {
     await thread.stop();
   }, [thread]);
@@ -98,6 +106,7 @@ export default function ChatPage() {
                 className={cn("size-full", !isNewThread && "pt-10")}
                 threadId={threadId}
                 thread={thread}
+                onClarificationRespond={handleClarificationRespond}
               />
             </div>
             <div className="absolute right-0 bottom-0 left-0 z-30 flex justify-center px-4">

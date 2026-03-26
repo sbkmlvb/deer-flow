@@ -267,6 +267,27 @@ export const enUS: Translations = {
     total: "Total",
   },
 
+  clarification: {
+    step: (current: number, total: number) => `Step ${current}/${total}`,
+    recommended: "Recommended",
+    other: "Other...",
+    customPlaceholder: "Enter your custom input...",
+    back: "Back",
+    skip: "Skip",
+    confirm: "Confirm",
+    submitting: "Submitting...",
+    next: "Next",
+    submitAll: "Submit All",
+    optional: "Optional",
+    enterText: "Enter text...",
+    selectedCount: (count: number) => `${count} selected`,
+    // Validation errors
+    errorRequired: "This question is required. Please answer before continuing.",
+    errorNoQuestion: "No question found.",
+    errorSelectOne: "Please select at least one option.",
+    errorCustomRequired: "Please enter your custom input.",
+  },
+
   shortcuts: {
     searchActions: "Search actions...",
     noResults: "No results found.",

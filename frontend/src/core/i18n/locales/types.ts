@@ -219,7 +219,29 @@ export interface Translations {
     output: string;
     total: string;
   };
-  
+
+  // Clarification
+  clarification: {
+    step: (current: number, total: number) => string;
+    recommended: string;
+    other: string;
+    customPlaceholder: string;
+    back: string;
+    skip: string;
+    confirm: string;
+    submitting: string;
+    next: string;
+    submitAll: string;
+    optional: string;
+    enterText: string;
+    selectedCount: (count: number) => string;
+    // Validation errors
+    errorRequired: string;
+    errorNoQuestion: string;
+    errorSelectOne: string;
+    errorCustomRequired: string;
+  };
+
   // Shortcuts
   shortcuts: {
     searchActions: string;
