@@ -616,6 +616,7 @@ fi
 # 设置配置路径
 export DEER_FLOW_CONFIG_PATH="${DEER_FLOW_CONFIG_PATH:-$SCRIPT_DIR/config.yaml}"
 export DEER_FLOW_EXTENSIONS_CONFIG_PATH="${DEER_FLOW_EXTENSIONS_CONFIG_PATH:-$SCRIPT_DIR/extensions_config.json}"
+export DEER_FLOW_HOME="${DEER_FLOW_HOME:-$SCRIPT_DIR/.deer-flow}"
 export GATEWAY_PORT=$GATEWAY_PORT
 export GATEWAY_HOST=0.0.0.0
 
@@ -814,6 +815,7 @@ fi
 # 设置配置路径
 export DEER_FLOW_CONFIG_PATH="$SCRIPT_DIR/config.yaml"
 export DEER_FLOW_EXTENSIONS_CONFIG_PATH="$SCRIPT_DIR/extensions_config.json"
+export DEER_FLOW_HOME="$SCRIPT_DIR/.deer-flow"
 
 GATEWAY_PORT=${GATEWAY_PORT:-8001}
 
