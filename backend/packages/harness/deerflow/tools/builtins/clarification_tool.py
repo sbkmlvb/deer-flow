@@ -5,11 +5,11 @@ from typing import Annotated, Any, Literal
 from langchain.tools import tool
 
 
-@tool("ask_clarification", parse_docstring=True, return_direct=True)
+@tool("ask_clarification", return_direct=True)
 def ask_clarification_tool(
     questions: Annotated[
         list[dict[str, Any]],
-        "List of questions to ask. Each question is a dict with required keys: 'id', 'question', 'type'. For choice types, include 'options' array. To allow users to enter custom answers not in the options, add {'label': '其他...', 'value': '__custom__'} to the options array.",
+        "List of questions to ask. Each question is a dict with required keys: 'id', 'question', 'type'. For choice types, include 'options' array. To allow custom answers, add an option with value='__custom__'.",
     ],
     title: str | None = None,
     context: str | None = None,

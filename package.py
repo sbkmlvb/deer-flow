@@ -209,37 +209,77 @@ FRONTEND_EXCLUDE_PATTERNS = [
     "start.js",
     "start-frontend.js",
     "package-lock.json",
-    # 依赖目录
-    "node_modules",
 ]
 
 
-def _should_exclude_frontend(name: str) -> bool:
-    """检查前端文件是否应该排除"""
+def _should_exclude_frontend(name: str, in_node_modules: bool = False) -> bool:
+    """检查前端文件是否应该排除
+
+    Args:
+        name: 文件/目录名
+        in_node_modules: 是否在 node_modules 目录内部（内部不排除 src 等）
+    """
     import fnmatch
+    # 在 node_modules 内部不排除任何目录（保留依赖完整性）
+    if in_node_modules:
+        return False
     for pattern in FRONTEND_EXCLUDE_PATTERNS:
         if fnmatch.fnmatch(name, pattern):
             return True
     return False
 
 
-def _copy_tree_filtered(src: Path, dest: Path) -> int:
-    """复制目录树，排除不需要的文件"""
+def _copy_tree_filtered(src: Path, dest: Path, in_node_modules: bool = False) -> int:
+    """复制目录树，排除不需要的文件
+
+    Args:
+        src: 源目录
+        dest: 目标目录
+        in_node_modules: 是否在 node_modules 目录内部
+    """
     import fnmatch
     count = 0
     dest.mkdir(parents=True, exist_ok=True)
 
     for item in src.iterdir():
-        if _should_exclude_frontend(item.name):
+        # 检查是否在 node_modules 内部
+        is_in_node_modules = in_node_modules or item.name == "node_modules"
+
+        if _should_exclude_frontend(item.name, in_node_modules):
             continue
 
         if item.is_dir():
-            count += _copy_tree_filtered(item, dest / item.name)
+            count += _copy_tree_filtered(item, dest / item.name, is_in_node_modules)
         else:
             shutil.copy2(item, dest / item.name)
             count += 1
 
     return count
+
+
+def _create_runtime_package_json() -> dict:
+    """创建运行时 package.json，包含原始所有依赖"""
+    import json
+
+    # 直接复制原始 package.json 的依赖
+    src_package = FRONTEND_DIR / "package.json"
+    with open(src_package) as f:
+        original = json.load(f)
+
+    # 创建运行时 package.json（保留所有 dependencies）
+    return {
+        "name": "deer-flow-frontend-runtime",
+        "version": "1.0.0",
+        "private": True,
+        "type": "module",
+        "scripts": {
+            "start": "node server.js"
+        },
+        "pnpm": {
+            "onlyBuiltDependencies": ["esbuild", "sharp"]
+        },
+        "dependencies": dict(original.get("dependencies", {}))
+    }
 
 
 def package_all():
@@ -263,27 +303,31 @@ def package_all():
         log("错误: 找不到 DeerFlowGateway", "error")
         return False
 
-    # 2. 复制前端（standalone，排除源码和开发配置）
+    # 2. 复制前端（standalone，包含完整 node_modules）
     frontend_src = FRONTEND_DIR / ".next" / "standalone"
     frontend_dest = OUTPUT_DIR / "frontend"
 
-    log("复制前端文件（仅运行必需文件）...")
-    file_count = _copy_tree_filtered(frontend_src, frontend_dest)
-    log(f"✓ 复制 {file_count} 个文件")
+    log("复制前端文件（含 node_modules）...")
 
-    # 复制 package.json 和 lock 文件（用于 install.sh 安装依赖）
-    package_json_src = FRONTEND_DIR / "package.json"
-    package_lock_src = FRONTEND_DIR / "pnpm-lock.yaml"
+    # 复制整个 standalone 目录
+    frontend_dest.mkdir(parents=True, exist_ok=True)
 
-    if package_json_src.exists():
-        shutil.copy2(package_json_src, frontend_dest / "package.json")
-        log("✓ 复制 package.json")
+    # 复制 server.js
+    server_js = frontend_src / "server.js"
+    if server_js.exists():
+        shutil.copy2(server_js, frontend_dest / "server.js")
 
-    if package_lock_src.exists():
-        shutil.copy2(package_lock_src, frontend_dest / "pnpm-lock.yaml")
-        log("✓ 复制 pnpm-lock.yaml")
+    # 复制 .next 目录
+    next_src = frontend_src / ".next"
+    next_dest = frontend_dest / ".next"
+    if next_src.exists():
+        file_count = _copy_tree_filtered(next_src, next_dest)
+        log(f"✓ 复制 .next ({file_count} 个文件)")
 
-    # 复制静态资源（standalone 模式需要手动复制）
+    # 不复制 node_modules，而是创建运行时 package.json，通过 install.sh 安装
+    # 这样可以大大减小打包体积，用户运行 install.sh 即可安装依赖
+
+    # 复制静态资源
     static_src = FRONTEND_DIR / ".next" / "static"
     static_dest = frontend_dest / ".next" / "static"
     if static_src.exists():
@@ -301,7 +345,21 @@ def package_all():
         shutil.copytree(public_src, public_dest)
         log("✓ 复制 public")
 
-    log(f"✓ 前端复制完成（node_modules 需通过 install.sh 安装）")
+    # 创建运行时 package.json（包含原始所有依赖）
+    log("创建运行时 package.json...")
+    import json
+    runtime_pkg = _create_runtime_package_json()
+    with open(frontend_dest / "package.json", "w") as f:
+        json.dump(runtime_pkg, f, indent=2)
+    log(f"✓ 创建 package.json ({len(runtime_pkg.get('dependencies', {}))} 个依赖)")
+
+    # 复制 pnpm-lock.yaml 以锁定依赖版本
+    lockfile_src = FRONTEND_DIR / "pnpm-lock.yaml"
+    if lockfile_src.exists():
+        shutil.copy2(lockfile_src, frontend_dest / "pnpm-lock.yaml")
+        log("✓ 复制 pnpm-lock.yaml（锁定依赖版本）")
+
+    log("✓ 前端复制完成（需运行 install.sh 安装依赖）")
 
     # 3. 复制 Node.js 运行时（如果存在）
     node_src = DEERFLOW_ROOT / "node"
@@ -436,14 +494,15 @@ if [ -d "$FRONTEND_DIR" ]; then
 
     if [ -f "package.json" ]; then
         # 使用 pnpm 安装，只安装 production 依赖
-        pnpm install --prod --frozen-lockfile
+        # 原生模块（esbuild, sharp）构建权限已在 package.json 的 pnpm.onlyBuiltDependencies 中配置
+        pnpm install --prod
 
-        if [ $? -eq 0 ]; then
-            log_info "✓ 前端依赖安装完成"
-        else
+        if [ $? -ne 0 ]; then
             log_error "前端依赖安装失败"
             exit 1
         fi
+
+        log_info "✓ 前端依赖安装完成"
     else
         log_error "未找到 frontend/package.json"
         exit 1
@@ -568,18 +627,15 @@ log_info "Gateway 端口: $GATEWAY_PORT"
 log_info "前端端口: $FRONTEND_PORT"
 log_info "=========================================="
 
-# 检查并创建 .env 文件
+# 检查并创建 .env 文件（不强制退出，仅提示）
 if [ ! -f ".env" ]; then
     if [ -f ".env.example" ]; then
         log_info "创建 .env 文件..."
         cp .env.example .env
-        echo ""
         log_warn "================================================"
-        log_warn "请编辑 .env 文件配置 API 密钥"
+        log_warn "请稍后编辑 .env 文件配置 API 密钥"
         log_warn "必需的密钥: ZHIPU_API_KEY"
         log_warn "================================================"
-        echo ""
-        exit 1
     fi
 fi
 
@@ -619,6 +675,8 @@ done
 log_step "启动前端..."
 if [ -d "$FRONTEND_DIR" ]; then
     cd "$FRONTEND_DIR"
+    BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-deerflow-default-secret-key}" \
+    BETTER_AUTH_URL="${BETTER_AUTH_URL:-http://localhost:$FRONTEND_PORT}" \
     PORT=$FRONTEND_PORT nohup $NODE_CMD server.js > /tmp/frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd "$SCRIPT_DIR"
