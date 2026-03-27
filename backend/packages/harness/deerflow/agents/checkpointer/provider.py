@@ -78,7 +78,12 @@ def _sync_checkpointer_cm(config: CheckpointerConfig) -> Iterator[Checkpointer]:
         except ImportError as exc:
             raise ImportError(SQLITE_INSTALL) from exc
 
+        import pathlib
+
         conn_str = _resolve_sqlite_conn_str(config.connection_string or "store.db")
+        # Only create parent directories for real filesystem paths
+        if conn_str != ":memory:" and not conn_str.startswith("file:"):
+            pathlib.Path(conn_str).parent.mkdir(parents=True, exist_ok=True)
         with SqliteSaver.from_conn_string(conn_str) as saver:
             saver.setup()
             logger.info("Checkpointer: using SqliteSaver (%s)", conn_str)
