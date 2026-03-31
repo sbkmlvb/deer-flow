@@ -44,6 +44,11 @@ It's OK to briefly explain terms if you're in doubt, and feel free to clarify te
 
 ## Creating a skill
 
+**重要：路径规则**
+- 新技能**必须**创建在 `/mnt/skills/custom/<技能名>/` 目录下
+- `/mnt/skills/public/` 是内置技能目录，**只读**，禁止写入
+- 使用 `write_file` 或 `bash` 工具直接在 `/mnt/skills/custom/` 下创建技能文件
+
 ### Capture Intent
 
 Start by understanding the user's intent. The current conversation might already contain a workflow the user wants to capture (e.g., they say "turn this into a skill"). If so, extract answers from the conversation history first — the tools used, the sequence of steps, corrections the user made, input/output formats observed. The user may need to fill the gaps, and should confirm before proceeding to the next step.
@@ -437,7 +442,7 @@ In Claude.ai, the core workflow is the same (draft → test → review → impro
 
 **Updating an existing skill**: The user might be asking you to update an existing skill, not create a new one. In this case:
 - **Preserve the original name.** Note the skill's directory name and `name` frontmatter field -- use them unchanged. E.g., if the installed skill is `research-helper`, output `research-helper.skill` (not `research-helper-v2`).
-- **Copy to a writeable location before editing.** The installed skill path may be read-only. Copy to `/tmp/skill-name/`, edit there, and package from the copy.
+- **Copy to a writeable location before editing.** Public skills are read-only. Copy to `/mnt/skills/custom/<skill-name>/`, edit there, and package from the copy.
 - **If packaging manually, stage in `/tmp/` first**, then copy to the output directory -- direct writes may fail due to permissions.
 
 ---

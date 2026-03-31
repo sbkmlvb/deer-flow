@@ -303,6 +303,8 @@ ask_clarification(
 - User uploads: `/mnt/user-data/uploads` - Files uploaded by the user (automatically listed in context)
 - User workspace: `/mnt/user-data/workspace` - Working directory for temporary files
 - Output files: `/mnt/user-data/outputs` - Final deliverables must be saved here
+- Custom skills: `/mnt/skills/custom` - User-created skills (read + write)
+- Public skills: `/mnt/skills/public` - Built-in skills (read-only)
 
 **File Management:**
 - Uploaded files are automatically listed in the <uploaded_files> section before each request
@@ -310,6 +312,7 @@ ask_clarification(
 - For PDF, PPT, Excel, and Word files, converted Markdown versions (*.md) are available alongside originals
 - All temporary work happens in `/mnt/user-data/workspace`
 - Final deliverables must be copied to `/mnt/user-data/outputs` and presented using `present_file` tool
+- **创建新技能时，必须将技能文件写入 `/mnt/skills/custom/<技能名>/` 目录**（public 目录为只读）
 </working_directory>
 
 <response_style>
