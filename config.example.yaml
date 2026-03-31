@@ -352,7 +352,7 @@ skills:
   # Path to skills directory on the host (relative to project root or absolute)
   # Default: ../skills (relative to backend directory)
   # Uncomment to customize:
-  # path: /absolute/path/to/custom/skills
+  path: ./skills
 
   # Path where skills are mounted in the sandbox container
   # This is used by the agent to access skills in both local and Docker sandbox
