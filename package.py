@@ -426,7 +426,7 @@ def create_scripts():
     log("=" * 50)
 
     # 安装依赖脚本
-    install_script = '''#!/bin/bash
+    install_script = r'''#!/bin/bash
 # DeerFlow 依赖安装脚本
 # 安装前端所需的 node_modules
 
@@ -436,11 +436,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # 颜色定义
-GREEN='\\033[0;32m'
-YELLOW='\\033[1;33m'
-RED='\\033[0;31m'
-BLUE='\\033[0;34m'
-NC='\\033[0m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -451,22 +451,46 @@ log_info "=========================================="
 log_info "DeerFlow 依赖安装"
 log_info "=========================================="
 
-# 设置 Node.js 命令：优先使用打包目录中的 node，其次使用系统 node
+# 设置 Node.js 命令：node 优先使用打包版本，npm/pnpm 优先使用系统版本
+# 打包的 npm 可能不完整，所以 npm 必须验证可用性
 BUNDLED_NODE="$SCRIPT_DIR/node/bin/node"
 BUNDLED_NPM="$SCRIPT_DIR/node/bin/npm"
+
+# 确定可用 npm 命令
+find_npm() {
+    # 优先检查打包的 npm 是否完整可用
+    if [ -x "$BUNDLED_NPM" ] && $BUNDLED_NPM --version &>/dev/null; then
+        echo "$BUNDLED_NPM"
+        return
+    fi
+    # 其次使用系统 npm
+    if command -v npm &> /dev/null; then
+        echo "npm"
+        return
+    fi
+    echo ""
+}
+
 if [ -x "$BUNDLED_NODE" ]; then
-    export PATH="$SCRIPT_DIR/node/bin:$PATH"
     NODE_CMD="$BUNDLED_NODE"
-    NPM_CMD="$BUNDLED_NPM"
     log_info "✓ 使用打包目录中的 Node.js: $($NODE_CMD -v)"
 elif command -v node &> /dev/null; then
     NODE_CMD="node"
-    NPM_CMD="npm"
     log_info "✓ 使用系统 Node.js: $($NODE_CMD -v)"
 else
     log_error "未找到 Node.js"
     log_info "请安装 Node.js 20+ 或确保 node/bin/node 二进制存在"
     exit 1
+fi
+
+NPM_CMD=$(find_npm)
+if [ -z "$NPM_CMD" ]; then
+    log_warn "未找到可用的 npm"
+fi
+
+# 将打包的 node 加入 PATH（放在后面，不覆盖系统的 npm/pnpm）
+if [ -x "$BUNDLED_NODE" ]; then
+    export PATH="$PATH:$SCRIPT_DIR/node/bin"
 fi
 
 NODE_VERSION=$($NODE_CMD -v | cut -d'v' -f2 | cut -d'.' -f1)
@@ -475,12 +499,34 @@ if [ "$NODE_VERSION" -lt 20 ]; then
     exit 1
 fi
 
-# 检查 pnpm
+# 检查 pnpm：优先使用系统 pnpm，其次用 corepack 启用，最后用 npm 全局安装
 if ! command -v pnpm &> /dev/null; then
     log_warn "未找到 pnpm，正在安装..."
-    $NPM_CMD install -g pnpm
-    if [ $? -ne 0 ]; then
-        log_error "pnpm 安装失败"
+
+    # 方案1: 使用 corepack 启用 pnpm（Node.js 自带）
+    COREPACK_CMD=""
+    if [ -x "$SCRIPT_DIR/node/bin/corepack" ]; then
+        COREPACK_CMD="$SCRIPT_DIR/node/bin/corepack"
+    elif command -v corepack &> /dev/null; then
+        COREPACK_CMD="corepack"
+    fi
+
+    if [ -n "$COREPACK_CMD" ]; then
+        log_step "使用 corepack 启用 pnpm..."
+        $COREPACK_CMD enable pnpm
+        if [ $? -eq 0 ] && command -v pnpm &> /dev/null; then
+            log_info "✓ pnpm 安装成功 (corepack)"
+        else
+            log_warn "corepack 启用失败，尝试 npm 全局安装..."
+            $NPM_CMD install -g pnpm 2>/dev/null || true
+        fi
+    else
+        # 方案2: 使用 npm 全局安装
+        $NPM_CMD install -g pnpm
+    fi
+
+    if ! command -v pnpm &> /dev/null; then
+        log_error "pnpm 安装失败，请手动安装: npm install -g pnpm"
         exit 1
     fi
 fi
@@ -526,7 +572,7 @@ log_info ""
     log("✓ 创建 install.sh")
 
     # 启动脚本
-    start_script = '''#!/bin/bash
+    start_script = r'''#!/bin/bash
 # DeerFlow 完整启动脚本
 # 自动杀死占用端口并启动服务
 
@@ -536,11 +582,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # 颜色定义
-GREEN='\\033[0;32m'
-YELLOW='\\033[1;33m'
-RED='\\033[0;31m'
-BLUE='\\033[0;34m'
-NC='\\033[0m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
@@ -560,56 +606,60 @@ else
     NODE_CMD="node"
 fi
 
-# 强制杀死占用端口的进程
+# 检查并释放占用的端口
 kill_port() {
     local port=$1
-    log_step "检查端口 $port..."
-
-    # 使用 fuser 强制杀死
-    if fuser -k $port/tcp 2>/dev/null; then
-        log_info "端口 $port 已释放"
-        sleep 1
-    fi
-
-    # 备用方案：使用 lsof
     local pids=$(lsof -t -i:$port 2>/dev/null || true)
     if [ -n "$pids" ]; then
-        log_warn "发现残留进程，强制终止..."
+        log_step "释放端口 $port..."
         for pid in $pids; do
-            kill -9 $pid 2>/dev/null && log_info "已终止进程 $pid"
+            kill -9 $pid 2>/dev/null || true
         done
         sleep 1
+        log_info "端口 $port 已释放"
     fi
 }
 
-# 停止所有服务
-stop_all() {
-    log_info "停止所有服务..."
+# 停止旧服务（仅清理已知 PID 文件中的进程，避免误杀）
+stop_old_services() {
+    # 通过 PID 文件停止旧服务
+    for pidfile in /tmp/deerflow_gateway.pid /tmp/deerflow_frontend.pid; do
+        if [ -f "$pidfile" ]; then
+            local pid=$(cat "$pidfile" 2>/dev/null)
+            if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+                log_step "停止旧服务 (PID: $pid)..."
+                kill "$pid" 2>/dev/null || true
+                sleep 1
+                kill -9 "$pid" 2>/dev/null || true
+            fi
+            rm -f "$pidfile"
+        fi
+    done
 
-    # 杀死端口
+    # 确保端口未被占用
     kill_port $GATEWAY_PORT
     kill_port $FRONTEND_PORT
-
-    # 杀死相关进程
-    pkill -9 -f "DeerFlowGateway" 2>/dev/null || true
-    pkill -9 -f "next dev" 2>/dev/null || true
-
-    log_info "所有服务已停止"
 }
 
 # 捕获退出信号（仅前台模式）
-trap 'log_info "收到退出信号..."; stop_all; exit 0' INT TERM
+trap 'log_info "收到退出信号..."; kill_port $GATEWAY_PORT; kill_port $FRONTEND_PORT; exit 0' INT TERM
 
-# 检查前端依赖
+# 检查前端依赖，未安装则自动运行 install.sh
 FRONTEND_DIR="$SCRIPT_DIR/frontend"
 if [ -d "$FRONTEND_DIR" ]; then
     if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
-        log_error "=========================================="
-        log_error "前端依赖未安装!"
-        log_error "=========================================="
-        log_error "请先运行: ./install.sh"
-        log_error ""
-        exit 1
+        log_warn "前端依赖未安装，正在自动安装..."
+        if [ -f "$SCRIPT_DIR/install.sh" ]; then
+            bash "$SCRIPT_DIR/install.sh"
+            if [ $? -ne 0 ]; then
+                log_error "自动安装失败，请手动运行: ./install.sh"
+                exit 1
+            fi
+            log_info "✓ 前端依赖安装完成，继续启动服务"
+        else
+            log_error "未找到 install.sh，请手动安装前端依赖"
+            exit 1
+        fi
     fi
 fi
 
@@ -648,7 +698,7 @@ if [ -f ".env" ]; then
 fi
 
 # 停止旧服务
-stop_all
+stop_old_services
 
 # 启动 Gateway
 log_step "启动 Gateway..."
